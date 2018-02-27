@@ -7,7 +7,7 @@ An all-purpose Discord bot for my Discord server, but can be self-hosted and use
 - Server moderation
 - Music playing
 - Imgur searching
-- Gify searching
+- Gfycat searching
 - Discord server text games
 - Discord server point system
 
