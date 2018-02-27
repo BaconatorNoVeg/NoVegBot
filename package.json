@@ -1,0 +1,19 @@
+{
+  "name": "novegbot",
+  "version": "1.0.0",
+  "description": "The official bot for the NoVeg Gaming Discord server",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BaconatorNoVeg/NoVegBot.git"
+  },
+  "author": "Joshua Luce",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BaconatorNoVeg/NoVegBot/issues"
+  },
+  "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme"
+}
