@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/BaconatorNoVeg/NoVegBot/issues"
   },
-  "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme"
+  "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme",
+  "dependencies": {
+    "eris": "^0.8.4"
+  },
+  "devDependencies": {}
 }
