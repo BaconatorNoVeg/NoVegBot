@@ -37,10 +37,10 @@ bot.on("messageCreate", (msg) => {
     if (msg.content === commands.help) {
         respond(msg, "Help not available yet.");
     }
-    else if (msg.content === options.prefix + "ping") {
+    else if (msg.content === commands.ping) {
         bot.createMessage(msg.channel.id, "Pong!");
 
-    } else if (msg.content === options.prefix + "pong") {
+    } else if (msg.content === commands.pong) {
         bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes cute Asian boys.");
     } else if (msg.content.startsWith(commands.play)) {
         if (!msg.channel.guild) {
@@ -112,7 +112,6 @@ bot.on("messageCreate", (msg) => {
                                 if (connection.playing) {
                                     bot.createMessage(msg.channel.id, "A song is already playing.");
                                 }
-                                //bot.createMessage(msg.channel.id, "Now playing `" + attachment.filename + "` as requested by `" + msg.author.username + "`");
                                 respond(msg, "Now playing `" + attachment.filename + "` as requested by `" + msg.author.username + "`");
                                 connection.play("./audio/local/" + attachment.filename, audioOptions);
                                 connection.setVolume(audioVolume);
