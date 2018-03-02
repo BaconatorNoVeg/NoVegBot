@@ -5,6 +5,7 @@ An all-purpose Discord bot for my Discord server, but can be self-hosted and use
 
 ## Features in Progress
 - Music playing
+- Music queueing
 
 ## Upcoming Features
 - Server moderation
