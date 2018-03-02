@@ -52,7 +52,7 @@ bot.on("messageCreate", (msg) => {
             return;
         }
         else if (msg.content.length <= commands.play.length + 1) {
-            bot.createMessage(msg.channel.id, "Please specify a YouTube link.");
+            respond(msg, "```\nPlay a song.\n\n\t[p]play <YouTube Link>   | Plays a video from YouTube\n\t[p]play local            | Use as comment on an attached mp3 file\n\nThis command may only be run in #novegbot.```");
             return;
         }
         else if (!msg.content.includes("local")) {
@@ -98,7 +98,6 @@ bot.on("messageCreate", (msg) => {
             } else {
                 console.log(attachment.filename);
                 console.log(attachment.url);
-                bot.deleteMessage(msg.channel.id, msg.id);
                 var http = require('https');
                 var fs = require('fs');
 
