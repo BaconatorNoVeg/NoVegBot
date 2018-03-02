@@ -17,7 +17,9 @@
   },
   "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme",
   "dependencies": {
-    "eris": "^0.8.4"
+    "eris": "^0.8.4",
+	"youtube-dl": "^1.12.2",
+	"ffmpeg": "^0.0.4"
   },
   "devDependencies": {}
 }
