@@ -28,8 +28,7 @@ var commands = {
     "stop": options.prefix + "stop",
     "skip": options.prefix + "skip",
     "ping": options.prefix + "ping",
-    "pong": options.prefix + "pong",
-    "disconnect": options.prefix + "disconnect"
+    "pong": options.prefix + "pong"
 }
 
 // Pre-programmed statements for the bot
