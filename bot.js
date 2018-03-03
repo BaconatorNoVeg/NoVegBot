@@ -1,31 +1,122 @@
+// The imports
 const Eris = require("eris");
 const ytdl = require("youtube-dl");
-const FS = require("fs");
-var options = require('./options.json');
-var bot = new Eris(options.bot_token);
-var ffmpeg = require('ffmpeg');
+const fs = require("fs");
+const getVidInfo = require("youtube-info");
+const options = require('./options.json');
 var path = require('path');
-var audioVolume = 0.075;
-var respond = function(msg, message) {
-    bot.createMessage(msg.channel.id, message);
+
+var bot = new Eris(options.bot_token);              // The birth of NoVegBot
+var audioVolume = 0.075;                            // Default audio volume        
+var isDebug = options.isDebug;                      // Debug flag for possible debug functions
+
+// Create message function because I'm lazy
+var respond = function (id, message) {
+    bot.createMessage(id, message);
 }
+
+// The bot's default playing status
 var defaultStatus = {
     name: "/help",
     type: 0
 }
+
+// JSON of commands, obviously
 var commands = {
     "help": options.prefix + "help",
     "play": options.prefix + "play",
     "stop": options.prefix + "stop",
+    "skip": options.prefix + "skip",
     "ping": options.prefix + "ping",
     "pong": options.prefix + "pong",
     "disconnect": options.prefix + "disconnect"
 }
+
+// Pre-programmed statements for the bot
 var statements = {
     "noDM": "This command cannot be run in direct messages."
 }
-var audioOptions = {
-    inlineVolume: true
+
+// Default audio options
+var audioOptions = {inlineVolume: true}
+
+var audioQueue = []
+
+// Download a YouTube video to play
+var downloadThenPlay = function (song, voiceChannel, guildID) {
+    var url = song.url;
+    var requester = song.requester;
+    var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
+    if (videoID != null) {
+        console.log("Video ID = ", videoID[1]);
+    } else {
+        console.log("The YouTube URL is not valid.");
+    }
+    getVidInfo(videoID[1]).then(function (videoInfo) {
+        respond(song.channel, "Playing `" + videoInfo.title + "` as requested by `" + requester.username + "`.")
+    })
+    fs.stat("./audio/cache/" + videoID[1] + ".mp3", function (err, stat) {
+        var audioFile = "./audio/cache/" + videoID[1] + ".mp3";
+        console.log("File: " + audioFile);
+        if (err == null) {
+            console.log("File already exists! Won't download again.");
+            playSong(voiceChannel, audioFile, guildID);
+        } else if (err.code == 'ENOENT') {
+            console.log("File doesn't exist, downloading.");
+            ytdl.exec(url, ['-x', '--audio-format', 'mp3', '-o', './audio/cache/%(id)s.%(ext)s'], {}, function exec(err, output) {
+                'use strict';
+                if (err) {
+                    throw err;
+                }
+                console.log(output.join('\n'));
+                playSong(voiceChannel, audioFile, guildID);
+            });
+        } else {
+            console.log("Something stupid happened. I don't know what, tho.");
+        }
+    });
+
+}
+
+// Play audio file
+var playSong = function (voiceChannel, name, guildID) {
+    console.log("Joining voice channel " + voiceChannel + ".")
+    var connection = bot.voiceConnections.find(vC => vC.id === guildID);
+    var queueSize = audioQueue.length;
+    console.log("Current queue size: " + queueSize);
+    if (connection == undefined) {
+        console.log("Connection was undefined.")
+        bot.joinVoiceChannel(voiceChannel).then((connection) => {
+            connection.play(name, audioOptions);
+            connection.setVolume(audioVolume);
+            connection.on("end", () => {
+                if (audioQueue.length == 0) {
+                    console.log("Queue is empty. Leaving voice channel.");
+                    bot.leaveVoiceChannel(voiceChannel);
+                } else {
+                    console.log("Playing next song in queue.");
+                    var nextSong = audioQueue.shift();
+                    console.log(nextSong);
+                    downloadThenPlay(nextSong, voiceChannel, guildID);
+                }
+            });
+        });
+    } else {
+        console.log("Connection already exists.")
+        connection.play(name, audioOptions);
+        connection.setVolume(audioVolume);
+        connection.on("end", () => {
+            if (audioQueue.length == 0) {
+                console.log("Queue is empty. Leaving voice channel.");
+                bot.leaveVoiceChannel(voiceChannel);
+            } else {
+                console.log("Playing next song in queue.");
+                var nextSong = audioQueue.shift();
+                console.log(nextSong);
+                downloadThenPlay(nextSong, voiceChannel, guildID);
+            }
+        });
+    }
 }
 
 bot.on("ready", () => {
@@ -33,63 +124,65 @@ bot.on("ready", () => {
     bot.editStatus("online", defaultStatus);
 });
 
+// Respond to messages
 bot.on("messageCreate", (msg) => {
+    var author = msg.author;
+    var channelID = msg.channel.id;
+
+    // Help Command
     if (msg.content === commands.help) {
-        respond(msg, "Help not available yet.");
+        respond(channelID, "Help not available yet.");
     }
+
+    // Ping Command
     else if (msg.content === commands.ping) {
         bot.createMessage(msg.channel.id, "Pong!");
-
-    } else if (msg.content === commands.pong) {
+    }
+    
+    // Pong Command
+    else if (msg.content === commands.pong) {
         bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes cute Asian boys.");
-    } else if (msg.content.startsWith(commands.play)) {
+    }
+    
+    // Play Command
+    else if (msg.content.startsWith(commands.play)) {
         if (!msg.channel.guild) {
             bot.createMessage(msg.channel.id, statements.noDM);
             return;
-        }
-        else if (!msg.member.voiceState.channelID) {
+        } else if (!msg.member.voiceState.channelID) {
             bot.createMessage(msg.channel.id, "You are not in a voice channel.");
             return;
-        }
-        else if (msg.content.length <= commands.play.length + 1) {
-            respond(msg, "```\nPlay a song.\n\n\t[p]play <YouTube Link>   | Plays a video from YouTube\n\t[p]play local            | Use as comment on an attached mp3 file\n\nThis command may only be run in #novegbot.```");
+        } else if (msg.content.length <= commands.play.length + 1) {
+            respond(channelID, "```\nPlay a song.\n\n\t[p]play <YouTube Link>   | Plays a video from YouTube\n\t[p]play local            | Use as comment on an attached mp3 file\n\nThis command may only be run in #novegbot.```");
             return;
-        }
-        else if (!msg.content.includes("local")) {
-            console.log("Valid link");
+        } else if (!msg.content.includes("local")) {
             var ytLink = msg.content.substring(commands.play.length + 1);
-            console.log(ytLink);
-            bot.joinVoiceChannel(msg.member.voiceState.channelID).then((connection) => {
+            var song = {
+                url: ytLink,
+                requester: author,
+                channel: channelID
+            }
+            console.log(song);
+            var voiceChannelID = msg.member.voiceState.channelID;
+            bot.joinVoiceChannel(voiceChannelID).then((connection) => {
                 if (connection.playing) {
-                    bot.createMessage(msg.channel.id, "A song is already playing.");
-                }
-                var videoid = ytLink.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-                if (videoid != null) {
-                    console.log("video id = ", videoid[1]);
-                } else {
-                    console.log("The youtube url is not valid.");
-                }
-                FS.stat("./audio/cache/" + videoid[1] + ".mp3", function (err, stat) {
-                    if (err == null) {
-                        console.log("File already exists! Won't download again.");
-                        connection.play("./audio/cache/" + videoid[1] + ".mp3", audioOptions);
-                        connection.setVolume(audioVolume);
-                    } else if (err.code == 'ENOENT') {
-                        console.log("File doesn't exist, downloading.");
-                        ytdl.exec(ytLink, ['-x', '--audio-format', 'mp3', '-o', './audio/cache/%(id)s.%(ext)s'], {}, function exec(err, output) {
-                            'use strict';
-                            if (err) {
-                                throw err;
-                            }
-                            console.log(output.join('\n'));
-                            // Play Args: source, [options.format, options.voiceDataTimeout, options.inlineVolume, options.inputArgs, options.encoderArgs, options.samplingRate, options.frameDuration, options.frameSize, options.pcmSize]
-                            connection.play("./audio/cache/" + videoid[1] + ".mp3", audioOptions);
-                            connection.setVolume(audioVolume);
-                        });
+                    audioQueue.push(song);
+                    console.log(audioQueue.length);
+                    var url = song.url;
+                    var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
+                    if (videoID != null) {
+                        console.log("Video ID = ", videoID[1]);
                     } else {
-                        console.log("Something stupid happened. I don't know what, tho.");
+                        console.log("The YouTube URL is not valid.");
                     }
-                });
+                    getVidInfo(videoID[1]).then(function (videoInfo) {
+                        respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
+                    });
+                    console.log(ytLink + " added to queue.");
+                    console.log("Current audio queue: " + audioQueue);
+                } else {
+                    downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+                }
             });
         } else {
             var attachment = msg.attachments[0];
@@ -111,7 +204,7 @@ bot.on("messageCreate", (msg) => {
                                 if (connection.playing) {
                                     bot.createMessage(msg.channel.id, "A song is already playing.");
                                 }
-                                respond(msg, "Now playing `" + attachment.filename + "` as requested by `" + msg.author.username + "`");
+                                respond(channelID, "Now playing `" + attachment.filename + "` as requested by `" + msg.author.username + "`");
                                 connection.play("./audio/local/" + attachment.filename, audioOptions);
                                 connection.setVolume(audioVolume);
                                 var nowPlaying = {
@@ -130,14 +223,44 @@ bot.on("messageCreate", (msg) => {
             }
         }
 
-    } else if (msg.content.startsWith(commands.stop)) {
-        
     }
-    else if (msg.content === commands.disconnect) {
-        bot.leaveVoiceChannel(msg.member.voiceState.channelID);
-    } else if (msg.content.includes(bot.user.mention)) {
-        bot.createMessage(msg.channel.id, "Hi, I'm NoVegBot!");
+    
+    // Stop command
+    else if (msg.content.startsWith(commands.stop)) {
+        var connection = bot.voiceConnections.find(vC => vC.id === msg.channel.guild.id);
+        audioQueue = [];
+        connection.stopPlaying();
+    }
+    
+    // Skip command
+    else if (msg.content.startsWith(commands.skip)) {
+        if (audioQueue.length == 0) {
+            respond(channelID, "The queue is empty!");
+        } else {
+            var connection = bot.voiceConnections.find(vC => vC.id === msg.channel.guild.id);
+            connection.stopPlaying();
+        }
+    }
+
+    // Respond to user mentions
+    else if (msg.content.includes(bot.user.mention)) {
+        // Responds to Baconator_NoVeg#8550. Please do not change the below if statement.
+        if (msg.author.id == 205407549426499594) {
+            respond(msg, "Hi dad!");
+        }
+        
+        // Responds to every other user
+        else {
+            respond(msg, "Hi!");
+        }
+    }
+
+    // Delete messages containing commands
+    if (msg.content.startsWith(options.prefix)) {
+        bot.deleteMessage(msg.channel.id, msg.id);
     }
 
 });
+
+// Let there be life!
 bot.connect();
