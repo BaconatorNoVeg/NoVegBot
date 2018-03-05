@@ -245,12 +245,12 @@ bot.on("messageCreate", (msg) => {
     else if (msg.content.includes(bot.user.mention)) {
         // Responds to Baconator_NoVeg#8550. Please do not change the below if statement.
         if (msg.author.id == 205407549426499594) {
-            respond(msg, "Hi dad!");
+            respond(channelID, "Hi dad!");
         }
         
         // Responds to every other user
         else {
-            respond(msg, "Hi!");
+            respond(channelID, "Hi!");
         }
     }
 
