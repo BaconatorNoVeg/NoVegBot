@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme",
   "dependencies": {
+    "convert-seconds": "^1.0.1",
     "eris": "^0.8.4",
     "youtube-dl": "1.11.1",
     "youtube-info": "^1.1.3"

@@ -5,11 +5,12 @@ const fs = require("fs");
 const getVidInfo = require("youtube-info");
 const options = require('./options.json');
 var path = require('path');
+var timeConvert = require('convert-seconds');
 
-var bot = new Eris(options.bot_token);              // The birth of NoVegBot
-var audioVolume = 0.075;                            // Default audio volume        
-var isDebug = options.isDebug;                      // Debug flag for possible debug functions
-
+var bot = new Eris(options.bot_token); // The birth of NoVegBot
+var audioVolume = 0.075; // Default audio volume        
+var isDebug = options.isDebug; // Debug flag for possible debug functions
+var conn = undefined;
 // Create message function because I'm lazy
 var respond = function (id, message) {
     bot.createMessage(id, message);
@@ -37,7 +38,9 @@ var statements = {
 }
 
 // Default audio options
-var audioOptions = {inlineVolume: true}
+var audioOptions = {
+    inlineVolume: true
+}
 
 var audioQueue = []
 
@@ -52,7 +55,69 @@ var downloadThenPlay = function (song, voiceChannel, guildID) {
         console.log("The YouTube URL is not valid.");
     }
     getVidInfo(videoID[1]).then(function (videoInfo) {
-        respond(song.channel, "Playing `" + videoInfo.title + "` as requested by `" + requester.username + "`.")
+        console.log(song.channel, "Playing `" + videoInfo.title + "` as requested by `" + requester.username + "`.");
+        var videoDurationConvert = timeConvert(videoInfo.duration);
+        var videoDuration;
+        if (videoDurationConvert.hours == 0) {
+            if (videoDurationConvert.minutes < 10) {
+                if (videoDurationConvert.seconds < 10) {
+                    videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                } else {
+                    videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                }
+            } else {
+                if (videoDurationConvert.seconds < 10) {
+                    videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                } else {
+                    videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                }
+            }
+        } else {
+            if (videoDurationConvert.minutes < 10) {
+                if (videoDurationConvert.seconds < 10) {
+                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                } else {
+                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                }
+            } else {
+                if (videoDurationConvert.seconds < 10) {
+                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                } else {
+                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                }
+            }
+        }
+        console.log(videoDuration);
+        const data = {
+            "embed": {
+                "title": videoInfo.title,
+                "url": videoInfo.url,
+                "color": 16711680,
+                "footer": {
+                    "icon_url": "https://cdn.discordapp.com/avatars/413768966578896906/df87608e430595b400782025a317c972.webp",
+                    "text": "NoVegBot"
+                },
+                "image": {
+                    "url": videoInfo.thumbnailUrl
+                },
+                "author": {
+                    "name": "Playing video requested by " + song.requester.username,
+                    "icon_url": song.requester.staticAvatarURL
+                },
+                "fields": [{
+                        "name": "Uploader",
+                        "value": videoInfo.owner,
+                        "inline": true
+                    },
+                    {
+                        "name": "Duration",
+                        "value": videoDuration,
+                        "inline": true
+                    }
+                ]
+            }
+        };
+        bot.createMessage(song.channel, data);
     })
     fs.stat("./audio/cache/" + videoID[1] + ".mp3", function (err, stat) {
         var audioFile = "./audio/cache/" + videoID[1] + ".mp3";
@@ -80,15 +145,15 @@ var downloadThenPlay = function (song, voiceChannel, guildID) {
 // Play audio file
 var playSong = function (voiceChannel, name, guildID) {
     console.log("Joining voice channel " + voiceChannel + ".")
-    var connection = bot.voiceConnections.find(vC => vC.id === guildID);
     var queueSize = audioQueue.length;
     console.log("Current queue size: " + queueSize);
-    if (connection == undefined) {
+    if (conn == undefined) {
         console.log("Connection was undefined.")
         bot.joinVoiceChannel(voiceChannel).then((connection) => {
-            connection.play(name, audioOptions);
-            connection.setVolume(audioVolume);
-            connection.on("end", () => {
+            conn = connection;
+            conn.play(name, audioOptions);
+            conn.setVolume(audioVolume);
+            conn.on("end", () => {
                 if (audioQueue.length == 0) {
                     console.log("Queue is empty. Leaving voice channel.");
                     bot.leaveVoiceChannel(voiceChannel);
@@ -100,11 +165,11 @@ var playSong = function (voiceChannel, name, guildID) {
                 }
             });
         });
-    } else {
+    } else if (conn != undefined) {
         console.log("Connection already exists.")
-        connection.play(name, audioOptions);
-        connection.setVolume(audioVolume);
-        connection.on("end", () => {
+        conn.play(name, audioOptions);
+        conn.setVolume(audioVolume);
+        conn.on("end", () => {
             if (audioQueue.length == 0) {
                 console.log("Queue is empty. Leaving voice channel.");
                 bot.leaveVoiceChannel(voiceChannel);
@@ -137,12 +202,12 @@ bot.on("messageCreate", (msg) => {
     else if (msg.content === commands.ping) {
         bot.createMessage(msg.channel.id, "Pong!");
     }
-    
+
     // Pong Command
     else if (msg.content === commands.pong) {
         bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes cute Asian boys.");
     }
-    
+
     // Play Command
     else if (msg.content.startsWith(commands.play)) {
         if (!msg.channel.guild) {
@@ -163,26 +228,28 @@ bot.on("messageCreate", (msg) => {
             }
             console.log(song);
             var voiceChannelID = msg.member.voiceState.channelID;
-            bot.joinVoiceChannel(voiceChannelID).then((connection) => {
-                if (connection.playing) {
-                    audioQueue.push(song);
-                    console.log(audioQueue.length);
-                    var url = song.url;
-                    var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-                    if (videoID != null) {
-                        console.log("Video ID = ", videoID[1]);
+                if (conn != undefined) {
+                    if (conn.playing) {
+                        audioQueue.push(song);
+                        console.log(audioQueue.length);
+                        var url = song.url;
+                        var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
+                        if (videoID != null) {
+                            console.log("Video ID = ", videoID[1]);
+                        } else {
+                            console.log("The YouTube URL is not valid.");
+                        }
+                        getVidInfo(videoID[1]).then(function (videoInfo) {
+                            respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
+                        });
+                        console.log(ytLink + " added to queue.");
+                        console.log("Current audio queue: " + audioQueue);
                     } else {
-                        console.log("The YouTube URL is not valid.");
+                        downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                     }
-                    getVidInfo(videoID[1]).then(function (videoInfo) {
-                        respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
-                    });
-                    console.log(ytLink + " added to queue.");
-                    console.log("Current audio queue: " + audioQueue);
                 } else {
                     downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                 }
-            });
         } else {
             var attachment = msg.attachments[0];
             if (attachment == undefined) {
@@ -223,21 +290,19 @@ bot.on("messageCreate", (msg) => {
         }
 
     }
-    
+
     // Stop command
     else if (msg.content.startsWith(commands.stop)) {
-        var connection = bot.voiceConnections.find(vC => vC.id === msg.channel.guild.id);
         audioQueue = [];
-        connection.stopPlaying();
+        conn.stopPlaying();
     }
-    
+
     // Skip command
     else if (msg.content.startsWith(commands.skip)) {
         if (audioQueue.length == 0) {
             respond(channelID, "The queue is empty!");
         } else {
-            var connection = bot.voiceConnections.find(vC => vC.id === msg.channel.guild.id);
-            connection.stopPlaying();
+            conn.stopPlaying();
         }
     }
 
@@ -247,7 +312,7 @@ bot.on("messageCreate", (msg) => {
         if (msg.author.id == 205407549426499594) {
             respond(channelID, "Hi dad!");
         }
-        
+
         // Responds to every other user
         else {
             respond(channelID, "Hi!");
