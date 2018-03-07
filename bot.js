@@ -157,6 +157,7 @@ var playSong = function (voiceChannel, name, guildID) {
                 if (audioQueue.length == 0) {
                     console.log("Queue is empty. Leaving voice channel.");
                     bot.leaveVoiceChannel(voiceChannel);
+                    conn = undefined;
                 } else {
                     console.log("Playing next song in queue.");
                     var nextSong = audioQueue.shift();
@@ -165,21 +166,10 @@ var playSong = function (voiceChannel, name, guildID) {
                 }
             });
         });
-    } else if (conn != undefined) {
+    } else {
         console.log("Connection already exists.")
         conn.play(name, audioOptions);
         conn.setVolume(audioVolume);
-        conn.on("end", () => {
-            if (audioQueue.length == 0) {
-                console.log("Queue is empty. Leaving voice channel.");
-                bot.leaveVoiceChannel(voiceChannel);
-            } else {
-                console.log("Playing next song in queue.");
-                var nextSong = audioQueue.shift();
-                console.log(nextSong);
-                downloadThenPlay(nextSong, voiceChannel, guildID);
-            }
-        });
     }
 }
 
@@ -228,28 +218,28 @@ bot.on("messageCreate", (msg) => {
             }
             console.log(song);
             var voiceChannelID = msg.member.voiceState.channelID;
-                if (conn != undefined) {
-                    if (conn.playing) {
-                        audioQueue.push(song);
-                        console.log(audioQueue.length);
-                        var url = song.url;
-                        var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-                        if (videoID != null) {
-                            console.log("Video ID = ", videoID[1]);
-                        } else {
-                            console.log("The YouTube URL is not valid.");
-                        }
-                        getVidInfo(videoID[1]).then(function (videoInfo) {
-                            respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
-                        });
-                        console.log(ytLink + " added to queue.");
-                        console.log("Current audio queue: " + audioQueue);
+            if (conn != undefined) {
+                if (conn.playing) {
+                    audioQueue.push(song);
+                    console.log(audioQueue.length);
+                    var url = song.url;
+                    var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
+                    if (videoID != null) {
+                        console.log("Video ID = ", videoID[1]);
                     } else {
-                        downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+                        console.log("The YouTube URL is not valid.");
                     }
+                    getVidInfo(videoID[1]).then(function (videoInfo) {
+                        respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
+                    });
+                    console.log(ytLink + " added to queue.");
+                    console.log("Current audio queue: " + audioQueue);
                 } else {
                     downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                 }
+            } else {
+                downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+            }
         } else {
             var attachment = msg.attachments[0];
             if (attachment == undefined) {
