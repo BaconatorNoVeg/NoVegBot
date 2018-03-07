@@ -3,6 +3,9 @@
 
 An all-purpose Discord bot for my Discord server, but can be self-hosted and used on other Discord servers. The bot is written completely in Javascript and runs on Node.js. Other libraries are planned on being added in the future to facilitate in the addition of new features.
 
+## Working Features
+- Gfycat searching
+
 ## Features in Progress
 - Music playing
 - Music queueing
@@ -10,7 +13,6 @@ An all-purpose Discord bot for my Discord server, but can be self-hosted and use
 ## Upcoming Features
 - Server moderation
 - Imgur searching
-- Gfycat searching
 - Discord server text games
 - Discord server point system
 

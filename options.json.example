@@ -1,5 +1,7 @@
 {
     "bot_token": "YOUR BOT TOKEN",
+    "gfycat_id": "YOUR GFYCAT CLIENT ID",
+    "gfycat_secret": "YOUR GFYCAT CLIENT SECRET",
     "prefix": "++",
     "isDebug": true
 }
