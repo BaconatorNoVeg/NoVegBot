@@ -38,9 +38,16 @@ var commands = {
     "gif": options.prefix + "gif"
 }
 
+// JSON of admin commands
+var adminComs = {
+    "set": options.prefix + "set",
+    "shutdown": options.prefix + "shutdown"
+}
+
 // Pre-programmed statements for the bot
 var statements = {
-    "noDM": "This command cannot be run in direct messages."
+    "noDM": "This command cannot be run in direct messages.",
+    "notAdmin": "Only the server managers can run this command."
 }
 
 // Default audio options
@@ -333,6 +340,24 @@ bot.on("messageCreate", (msg) => {
         // Responds to every other user
         else {
             bot.addMessageReaction(msg.channel.id, msg.id, "😄");
+        }
+    }
+
+    // Admin Commands
+    else if(msg.content.startsWith(adminComs.set)) {
+        if(!msg.member.permission.json.manageGuild) {
+            respond(channelID, statements.notAdmin);
+        } else {
+            console.log("Do the set stuff.")
+        }
+    }
+
+    else if(msg.content.startsWith(adminComs.shutdown)) {
+        if(!msg.member.permission.json.manageGuild) {
+            respond(channelID, statements.notAdmin);
+        } else {
+            console.log("NoVegBot is shutting down.");
+            bot.disconnect();
         }
     }
 
