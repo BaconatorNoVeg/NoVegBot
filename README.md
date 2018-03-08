@@ -1,14 +1,15 @@
 # NoVegBot
-![](https://img.shields.io/badge/Language-Javascript-green.svg) ![](https://img.shields.io/badge/API-Eris-blue.svg) ![](https://img.shields.io/badge/Status-WIP-yellow.svg) ![](https://img.shields.io/badge/Version-0.2.5-red.svg)
+![](https://img.shields.io/badge/Language-Javascript-green.svg) ![](https://img.shields.io/badge/API-Eris-blue.svg) ![](https://img.shields.io/badge/Status-WIP-00d832.svg) ![](https://img.shields.io/badge/Version-0.5.0-orange.svg)
 
 An all-purpose Discord bot for my Discord server, but can be self-hosted and used on other Discord servers. The bot is written completely in Javascript and runs on Node.js. Other libraries are planned on being added in the future to facilitate in the addition of new features.
 
 ## Working Features
 - Gfycat searching
+- YouTube music playing
+- YouTube music queueing
 
 ## Features in Progress
-- Music playing
-- Music queueing
+- Upload and play mp3 files
 
 ## Upcoming Features
 - Server moderation
