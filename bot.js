@@ -9,7 +9,10 @@ var path = require('path');
 var timeConvert = require('convert-seconds');
 
 var bot = new Eris(options.bot_token); // The birth of NoVegBot
-var gfycat = new Gfycat({clientId: options.gfycat_id, clientSecret: options.gfycat_secret});
+var gfycat = new Gfycat({
+    clientId: options.gfycat_id,
+    clientSecret: options.gfycat_secret
+});
 var audioVolume = 0.075; // Default audio volume        
 var isDebug = options.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
@@ -155,36 +158,24 @@ var playSong = function (voiceChannel, name, guildID) {
             conn = connection;
             conn.play(name, audioOptions);
             conn.setVolume(audioVolume);
-        });
-        conn.on("end", () => {
-            if (audioQueue.length == 0) {
-                console.log("Queue is empty. Leaving voice channel.");
-                bot.leaveVoiceChannel(voiceChannel);
-            } else {
-                console.log("Playing next song in queue.");
-                var nextSong = audioQueue.shift();
-                console.log(nextSong);
-                downloadThenPlay(nextSong, voiceChannel, guildID);
-            }
+            conn.on("end", () => {
+                if (audioQueue.length == 0) {
+                    console.log("Queue is empty. Leaving voice channel.");
+                    bot.leaveVoiceChannel(voiceChannel);
+                    conn = undefined;
+                } else {
+                    console.log("Playing next song in queue.");
+                    var nextSong = audioQueue.shift();
+                    console.log(nextSong);
+                    downloadThenPlay(nextSong, voiceChannel, guildID);
+                }
+            });
         });
     } else if (conn != undefined) {
         console.log("Connection already exists.")
         conn.play(name, audioOptions);
         conn.setVolume(audioVolume);
     }
-    //if (conn != undefined) {
-        conn.on("end", () => {
-            if (audioQueue.length == 0) {
-                console.log("Queue is empty. Leaving voice channel.");
-                bot.leaveVoiceChannel(voiceChannel);
-            } else {
-                console.log("Playing next song in queue.");
-                var nextSong = audioQueue.shift();
-                console.log(nextSong);
-                downloadThenPlay(nextSong, voiceChannel, guildID);
-            }
-        });
-    //}
 }
 
 bot.on("ready", () => {
@@ -309,7 +300,8 @@ bot.on("messageCreate", (msg) => {
             conn.stopPlaying();
         }
     }
-
+    
+    // Gif command
     else if (msg.content.startsWith(commands.gif)) {
         gfycat.authenticate().then(res => {
             assert.equal(res.access_token, gfycat.token);
