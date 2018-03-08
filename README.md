@@ -25,7 +25,10 @@ Make sure you have Node.js installed. The bot runs on it.
 `git clone https://github.com/BaconatorNoVeg/NoVegBot.git`
 2. Navigate inside the cloned folder and install the Node.js dependencies
 `cd NoVegBot` -> `npm install`
-3. Run NoVegBot
+3. Rename the `options.json.example` file to `options.json`
+4. Open the `options.json` file and paste your bot token into the "bot_token" field
+5. (Optional, but required for Gfycat functionality) Get Gfycat API credentials and paste them into their respected fields in `options.json`
+6. Run NoVegBot
 `node bot.js`
 
 If you have any questions, or you would like to contribute to this project somehow, please do not hesitate to use the issue tracker or contact me on Discord: **Baconator_NoVeg#8550**.
