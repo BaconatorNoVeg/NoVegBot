@@ -10,9 +10,9 @@ An all-purpose Discord bot for my Discord server, but can be self-hosted and use
 
 ## Features in Progress
 - Upload and play mp3 files
+- Server moderation
 
 ## Upcoming Features
-- Server moderation
 - Imgur searching
 - Discord server text games
 - Discord server point system
