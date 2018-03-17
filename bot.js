@@ -5,16 +5,20 @@ const fs = require("fs");
 const getVidInfo = require("youtube-info");
 const Gfycat = require('gfycat-sdk');
 const options = require('./options.json');
+const papa = require("papaparse");
+const editJsonFile = require("edit-json-file");
+let optionsFile = editJsonFile(`${__dirname}/options.json`);
 var path = require('path');
 var timeConvert = require('convert-seconds');
 
-var bot = new Eris(options.bot_token); // The birth of NoVegBot
+var bot = new Eris(options.core.bot_token); // The birth of NoVegBot
 var gfycat = new Gfycat({
-    clientId: options.gfycat_id,
-    clientSecret: options.gfycat_secret
+    clientId: options.core.gfycat_id,
+    clientSecret: options.core.gfycat_secret
 });
-var audioVolume = 0.075; // Default audio volume        
-var isDebug = options.isDebug; // Debug flag for possible debug functions
+var blacklistEnabled = options.server.wordBlacklist;
+var whitelist = options.server.channelWhitelist;  
+var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
 // Create message function because I'm lazy
 var respond = function (id, message) {
@@ -29,19 +33,19 @@ var defaultStatus = {
 
 // JSON of commands, obviously
 var commands = {
-    "help": options.prefix + "help",
-    "play": options.prefix + "play",
-    "stop": options.prefix + "stop",
-    "skip": options.prefix + "skip",
-    "ping": options.prefix + "ping",
-    "pong": options.prefix + "pong",
-    "gif": options.prefix + "gif"
+    "help": options.core.prefix + "help",
+    "play": options.core.prefix + "play",
+    "stop": options.core.prefix + "stop",
+    "skip": options.core.prefix + "skip",
+    "ping": options.core.prefix + "ping",
+    "pong": options.core.prefix + "pong",
+    "gif": options.core.prefix + "gif"
 }
 
 // JSON of admin commands
 var adminComs = {
-    "set": options.prefix + "set",
-    "shutdown": options.prefix + "shutdown"
+    "set": options.core.prefix + "set",
+    "shutdown": options.core.prefix + "shutdown"
 }
 
 // Pre-programmed statements for the bot
@@ -164,7 +168,7 @@ var playSong = function (voiceChannel, name, guildID) {
         bot.joinVoiceChannel(voiceChannel).then((connection) => {
             conn = connection;
             conn.play(name, audioOptions);
-            conn.setVolume(audioVolume);
+            conn.setVolume(options.audio.audioVolume);
             conn.on("end", () => {
                 if (audioQueue.length == 0) {
                     console.log("Queue is empty. Leaving voice channel.");
@@ -181,7 +185,7 @@ var playSong = function (voiceChannel, name, guildID) {
     } else if (conn != undefined) {
         console.log("Connection already exists.")
         conn.play(name, audioOptions);
-        conn.setVolume(audioVolume);
+        conn.setVolume(options.audio.audioVolume);
     }
 }
 
@@ -207,7 +211,7 @@ bot.on("messageCreate", (msg) => {
 
     // Pong Command
     else if (msg.content === commands.pong) {
-        bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes cute Asian boys.");
+        bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes Anime, and that's gay.");
     }
 
     // Play Command
@@ -344,26 +348,91 @@ bot.on("messageCreate", (msg) => {
     }
 
     // Admin Commands
-    else if(msg.content.startsWith(adminComs.set)) {
-        if(!msg.member.permission.json.manageGuild) {
+    else if (msg.content.startsWith(adminComs.set)) {
+        if (!msg.member.permission.json.manageGuild) {
             respond(channelID, statements.notAdmin);
+        } else if (msg.content.length == adminComs.set.length) {
+            respond(channelID, "```\nSet bot options.\n\n\t[p]set blacklist   | Enables/disables word blacklist\n\nThese commands may only be run by server managers.```")
         } else {
-            console.log("Do the set stuff.")
+            var arg = msg.content.substring(adminComs.set.length + 1);
+            if (arg == "blacklist") {
+                if (blacklistEnabled) {
+                    blacklistEnabled = false;
+                    optionsFile.set("server.wordBlacklist", false);
+                    respond(channelID, "Word blacklist disabled.");
+                } else {
+                    blacklistEnabled = true;
+                    optionsFile.set("server.wordBlacklist", true);
+                    respond(channelID, "Word blacklist enabled.");
+                }
+            }
+            else if (arg.includes("volume")) {
+                if (msg.content.length == adminComs.set.length + " volume" + 1) {
+                    respond(channelID, "```\nSet audio volume\n\n\t[p]set volume <percent>   | <percent> is a percentage between 1 and 100\n\nThis command may only be run by server managers.```")
+                } else {
+                    var setVolume = parseInt(arg.substring("volume".length + 1));
+                    console.log(setVolume);
+                    setVolume *= 0.01;
+                    optionsFile.set("audio.audioVolume", setVolume);
+                }
+            }
         }
-    }
-
-    else if(msg.content.startsWith(adminComs.shutdown)) {
-        if(!msg.member.permission.json.manageGuild) {
+    } else if (msg.content.startsWith(adminComs.shutdown)) {
+        if (!msg.member.permission.json.manageGuild) {
             respond(channelID, statements.notAdmin);
         } else {
             console.log("NoVegBot is shutting down.");
+            optionsFile.save();
+            console.log("Options saved.");
+            console.log("Disconnecting...");
             bot.disconnect();
+            console.log("NoVegBot has shut down.");
+        }
+    } else if (msg.content.startsWith(adminComs.whitelist)) {
+        if (!msg.member.permission.json.manageGuild) {
+            respond(channelID, statements.notAdmin);
+        } else if (options.server.wordBlacklist) {
+            var arg = msg.content.substring(adminComs.whitelist.length + 1);
+            if (arg == "add") {
+                for (var i = 0; i < whitelist.length; i++) {
+                    var channelExists = false;
+                    if (msg.channel.id == whitelist[i]) {
+                        respond(channelID, "This channel is already on the whitelist.");
+                        channelExists = true;
+                        return;
+                    }
+                }
+                if (!channelExists) {
+                    whitelist.push(msg.channel.id);
+                    optionsFile.set("server.channelWhitelist", whitelist);
+                }
+            } else if (arg == "remove") {
+                for (var i = 0; i < whitelist.length; i++) {
+                    var channelExists = false;
+                    if (msg.channel.id == whitelist[i]) {
+                        whitelist.splice(i, 1);
+                        channelExists = true;
+                        optionsFile.set("server.channelWhitelist", whitelist);
+                        return;
+                    }
+                }
+                if (!channelExists) {
+                    respond(channelID, "This channel is not on the whitelist.");
+                }
+            }
+        } else {
+            respond(channelID, "Word blacklist is disabled.")
         }
     }
 
     // Delete messages containing commands
-    if (msg.content.startsWith(options.prefix)) {
+    if (msg.content.startsWith(options.core.prefix)) {
         bot.deleteMessage(msg.channel.id, msg.id);
+    }
+
+    // For server word blacklist
+    if (options.server.wordBlacklist) {
+        // Delete messages that contain words in the specified word blacklist file
     }
 
 });

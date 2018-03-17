@@ -1,7 +1,17 @@
 {
-    "bot_token": "YOUR BOT TOKEN",
-    "gfycat_id": "YOUR GFYCAT CLIENT ID",
-    "gfycat_secret": "YOUR GFYCAT CLIENT SECRET",
-    "prefix": "++",
+  "core": {
+    "bot_token": "",
+    "gfycat_id": "",
+    "gfycat_secret": "",
+    "prefix": "/",
     "isDebug": true
+  },
+  "audio": {
+    "audioVolume": 0.25
+  },
+  "server": {
+    "wordBlacklist": false,
+    "channelWhitelist": [],
+    "bannedWordsFile": ""
+  }
 }
