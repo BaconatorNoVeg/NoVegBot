@@ -5,7 +5,7 @@ const fs = require("fs");
 const getVidInfo = require("youtube-info");
 const Gfycat = require('gfycat-sdk');
 const options = require('./options.json');
-const papa = require("papaparse");
+const baby = require("babyparse");
 const editJsonFile = require("edit-json-file");
 let optionsFile = editJsonFile(`${__dirname}/options.json`);
 var path = require('path');
@@ -17,6 +17,7 @@ var gfycat = new Gfycat({
     clientSecret: options.core.gfycat_secret
 });
 var blacklistEnabled = options.server.wordBlacklist;
+var wordBlacklist = (baby.parseFiles(options.server.bannedWordsFile)).data[0];
 var whitelist = options.server.channelWhitelist;  
 var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
@@ -45,7 +46,8 @@ var commands = {
 // JSON of admin commands
 var adminComs = {
     "set": options.core.prefix + "set",
-    "shutdown": options.core.prefix + "shutdown"
+    "shutdown": options.core.prefix + "shutdown",
+    "whitelist": options.core.prefix + "whitelist"
 }
 
 // Pre-programmed statements for the bot
@@ -391,7 +393,7 @@ bot.on("messageCreate", (msg) => {
     } else if (msg.content.startsWith(adminComs.whitelist)) {
         if (!msg.member.permission.json.manageGuild) {
             respond(channelID, statements.notAdmin);
-        } else if (options.server.wordBlacklist) {
+        } else if (blacklistEnabled) {
             var arg = msg.content.substring(adminComs.whitelist.length + 1);
             if (arg == "add") {
                 for (var i = 0; i < whitelist.length; i++) {
@@ -404,6 +406,7 @@ bot.on("messageCreate", (msg) => {
                 }
                 if (!channelExists) {
                     whitelist.push(msg.channel.id);
+                    respond(channelID, "This channel was added to the whitelist.");
                     optionsFile.set("server.channelWhitelist", whitelist);
                 }
             } else if (arg == "remove") {
@@ -412,6 +415,7 @@ bot.on("messageCreate", (msg) => {
                     if (msg.channel.id == whitelist[i]) {
                         whitelist.splice(i, 1);
                         channelExists = true;
+                        respond(channelID, "This channel was removed from the whitelist.")
                         optionsFile.set("server.channelWhitelist", whitelist);
                         return;
                     }
@@ -432,7 +436,23 @@ bot.on("messageCreate", (msg) => {
 
     // For server word blacklist
     if (options.server.wordBlacklist) {
-        // Delete messages that contain words in the specified word blacklist file
+        for (var i = 0; i < whitelist.length; i++) {
+            var channelExists = false;
+            if (msg.channel.id == whitelist[i]) {
+                channelExists = true;
+                return;
+            }
+        }
+        if (!channelExists) {
+            for (var i = 0; i < wordBlacklist.length; i++) {
+                if (msg.content.includes(wordBlacklist[i])) {
+                    bot.deleteMessage(msg.channel.id, msg.id);
+                    if (options.core.isDebug) {
+                        console.log(msg.author.username + " used a banned word in " + msg.channel.name + ".");
+                    }
+                }
+            }
+        }
     }
 
 });
