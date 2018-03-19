@@ -435,7 +435,7 @@ bot.on("messageCreate", (msg) => {
     }
 
     // For server word blacklist
-    if (options.server.wordBlacklist) {
+    if (blacklistEnabled) {
         for (var i = 0; i < whitelist.length; i++) {
             var channelExists = false;
             if (msg.channel.id == whitelist[i]) {
