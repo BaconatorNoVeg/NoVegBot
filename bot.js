@@ -445,7 +445,7 @@ bot.on("messageCreate", (msg) => {
         }
         if (!channelExists) {
             for (var i = 0; i < wordBlacklist.length; i++) {
-                if (msg.content.includes(wordBlacklist[i])) {
+                if (msg.content.toLowerCase().includes(wordBlacklist[i])) {
                     bot.deleteMessage(msg.channel.id, msg.id);
                     if (options.core.isDebug) {
                         console.log(msg.author.username + " used a banned word in " + msg.channel.name + ".");
