@@ -17,11 +17,11 @@
   },
   "homepage": "https://github.com/BaconatorNoVeg/NoVegBot#readme",
   "dependencies": {
+    "babyparse": "^0.4.6",
     "convert-seconds": "^1.0.1",
     "edit-json-file": "^1.0.8",
     "eris": "^0.8.4",
     "gfycat-sdk": "^1.4.12",
-    "papaparse": "^4.3.7",
     "youtube-dl": "1.11.1",
     "youtube-info": "^1.1.3"
   },
