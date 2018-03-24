@@ -10,15 +10,17 @@ const editJsonFile = require("edit-json-file");
 let optionsFile = editJsonFile(`${__dirname}/options.json`);
 var path = require('path');
 var timeConvert = require('convert-seconds');
+var YouTube = require('youtube-node');
 
 var bot = new Eris(options.core.bot_token); // The birth of NoVegBot
 var gfycat = new Gfycat({
     clientId: options.core.gfycat_id,
     clientSecret: options.core.gfycat_secret
 });
+var youTube = new YouTube();
 var blacklistEnabled = options.server.wordBlacklist;
 var wordBlacklist = (baby.parseFiles(options.server.bannedWordsFile)).data[0];
-var whitelist = options.server.channelWhitelist;  
+var whitelist = options.server.channelWhitelist;
 var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
 // Create message function because I'm lazy
@@ -192,6 +194,7 @@ var playSong = function (voiceChannel, name, guildID) {
 }
 
 bot.on("ready", () => {
+    youTube.setKey(options.core.youtube_key);
     console.log("NoVegBot is ready!");
     bot.editStatus("online", defaultStatus);
 });
@@ -213,7 +216,7 @@ bot.on("messageCreate", (msg) => {
 
     // Pong Command
     else if (msg.content === commands.pong) {
-        bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes Anime, and that's gay.");
+        bot.createMessage(msg.channel.id, "I hear " + msg.author.mention + " likes cute Asian boys.");
     }
 
     // Play Command
@@ -229,34 +232,71 @@ bot.on("messageCreate", (msg) => {
             return;
         } else if (!msg.content.includes("local")) {
             var ytLink = msg.content.substring(commands.play.length + 1);
-            var song = {
-                url: ytLink,
-                requester: author,
-                channel: channelID
-            }
-            console.log(song);
-            var voiceChannelID = msg.member.voiceState.channelID;
-            if (conn != undefined) {
-                if (conn.playing) {
-                    audioQueue.push(song);
-                    console.log(audioQueue.length);
-                    var url = song.url;
-                    var videoID = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-                    if (videoID != null) {
-                        console.log("Video ID = ", videoID[1]);
+            var videoID = ytLink.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
+            var songUrl = null;
+            var song = {};
+            if (videoID == null) {
+                console.log("Searching youtube")
+                youTube.search(ytLink, 1, function (err, result) {
+                    if (err) {
+                        console.log("Error in search");
+                        console.log(error);
                     } else {
-                        console.log("The YouTube URL is not valid.");
+                        console.log("Using first search result.");
+                        videoID = result.items[0].id.videoId;
+                        songUrl = "https://www.youtube.com/watch?v=" + videoID;
+                        console.log(songUrl);
+                        song = {
+                            url: songUrl,
+                            requester: author,
+                            channel: channelID
+                        }
+                        var voiceChannelID = msg.member.voiceState.channelID;
+                        if (conn != undefined) {
+                            if (conn.playing) {
+                                audioQueue.push(song);
+                                console.log(audioQueue.length);
+                                var url = song.url;
+                                getVidInfo(videoID).then(function (videoInfo) {
+                                    respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
+                                });
+                                console.log(ytLink + " added to queue.");
+                                console.log("Current audio queue: " + audioQueue);
+                            } else {
+                                downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+                            }
+                        } else {
+                            console.log("Executing the downloadThenPlay function now!!!")
+                            downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+                        }
                     }
-                    getVidInfo(videoID[1]).then(function (videoInfo) {
-                        respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
-                    });
-                    console.log(ytLink + " added to queue.");
-                    console.log("Current audio queue: " + audioQueue);
+                });
+            } else {
+                console.log("Video ID = ", videoID[1]);
+                songUrl = ytLink;
+                song = {
+                    url: songUrl,
+                    requester: author,
+                    channel: channelID
+                }
+                var voiceChannelID = msg.member.voiceState.channelID;
+                if (conn != undefined) {
+                    if (conn.playing) {
+                        audioQueue.push(song);
+                        console.log(audioQueue.length);
+                        var url = song.url;
+                        getVidInfo(videoID[1]).then(function (videoInfo) {
+                            respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
+                        });
+                        console.log(ytLink + " added to queue.");
+                        console.log("Current audio queue: " + audioQueue);
+                    } else {
+                        downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
+                    }
                 } else {
+                    console.log("Executing the downloadThenPlay function now!!!")
                     downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                 }
-            } else {
-                downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
             }
         } else {
             var attachment = msg.attachments[0];
@@ -313,7 +353,7 @@ bot.on("messageCreate", (msg) => {
             conn.stopPlaying();
         }
     }
-    
+
     // Gif command
     else if (msg.content.startsWith(commands.gif)) {
         gfycat.authenticate().then(res => {
@@ -367,8 +407,7 @@ bot.on("messageCreate", (msg) => {
                     optionsFile.set("server.wordBlacklist", true);
                     respond(channelID, "Word blacklist enabled.");
                 }
-            }
-            else if (arg.includes("volume")) {
+            } else if (arg.includes("volume")) {
                 if (msg.content.length == adminComs.set.length + " volume" + 1) {
                     respond(channelID, "```\nSet audio volume\n\n\t[p]set volume <percent>   | <percent> is a percentage between 1 and 100\n\nThis command may only be run by server managers.```")
                 } else {

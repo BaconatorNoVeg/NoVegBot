@@ -3,6 +3,7 @@
     "bot_token": "",
     "gfycat_id": "",
     "gfycat_secret": "",
+    "youtube_key": "",
     "prefix": "/",
     "isDebug": true
   },

@@ -23,7 +23,8 @@
     "eris": "^0.8.4",
     "gfycat-sdk": "^1.4.12",
     "youtube-dl": "1.11.1",
-    "youtube-info": "^1.1.3"
+    "youtube-info": "^1.1.3",
+    "youtube-node": "^1.3.2"
   },
   "devDependencies": {}
 }
