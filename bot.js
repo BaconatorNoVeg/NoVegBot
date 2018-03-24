@@ -236,7 +236,7 @@ bot.on("messageCreate", (msg) => {
             var songUrl = null;
             var song = {};
             if (videoID == null) {
-                console.log("Searching youtube")
+                console.log("Searching youtube.");
                 youTube.search(ytLink, 1, function (err, result) {
                     if (err) {
                         console.log("Error in search");
@@ -266,7 +266,6 @@ bot.on("messageCreate", (msg) => {
                                 downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                             }
                         } else {
-                            console.log("Executing the downloadThenPlay function now!!!")
                             downloadThenPlay(song, voiceChannelID, msg.channel.guild.id, msg.author);
                         }
                     }
