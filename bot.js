@@ -23,6 +23,7 @@ var wordBlacklist = (baby.parseFiles(options.server.bannedWordsFile)).data[0];
 var whitelist = options.server.channelWhitelist;
 var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
+var loop = false;
 // Create message function because I'm lazy
 var respond = function (id, message) {
     bot.createMessage(id, message);
@@ -38,6 +39,7 @@ var defaultStatus = {
 var commands = {
     "help": options.core.prefix + "help",
     "play": options.core.prefix + "play",
+    "loop": options.core.prefix + "loop",
     "stop": options.core.prefix + "stop",
     "skip": options.core.prefix + "skip",
     "ping": options.core.prefix + "ping",
@@ -174,15 +176,20 @@ var playSong = function (voiceChannel, name, guildID) {
             conn.play(name, audioOptions);
             conn.setVolume(options.audio.audioVolume);
             conn.on("end", () => {
-                if (audioQueue.length == 0) {
-                    console.log("Queue is empty. Leaving voice channel.");
-                    bot.leaveVoiceChannel(voiceChannel);
-                    conn = undefined;
+                if (loop) {
+                    console.log("Loop is enabled. Replaying current song.");
+                    conn.play(name, audioOptions);
                 } else {
-                    console.log("Playing next song in queue.");
-                    var nextSong = audioQueue.shift();
-                    console.log(nextSong);
-                    downloadThenPlay(nextSong, voiceChannel, guildID);
+                    if (audioQueue.length == 0) {
+                        console.log("Queue is empty. Leaving voice channel.");
+                        bot.leaveVoiceChannel(voiceChannel);
+                        conn = undefined;
+                    } else {
+                        console.log("Playing next song in queue.");
+                        var nextSong = audioQueue.shift();
+                        console.log(nextSong);
+                        downloadThenPlay(nextSong, voiceChannel, guildID);
+                    }
                 }
             });
         });
@@ -336,6 +343,25 @@ bot.on("messageCreate", (msg) => {
             }
         }
 
+    }
+
+    // Loop Command
+    else if (msg.content.startsWith(commands.loop)) {
+        if (conn != undefined) {
+            if (conn.playing) {
+                if (!loop) {
+                    loop = true;
+                    respond(channelID, "Loop is enabled for the current song.")
+                } else {
+                    loop = false;
+                    respond(channelID, "Loop has been disabled.")
+                }
+            } else {
+                respond(channelID, "Nothing is playing right now!");
+            }
+        } else {
+            respond(channelID, "Nothing is playing right now!");
+        }
     }
 
     // Stop command
