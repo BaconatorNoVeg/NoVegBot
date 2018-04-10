@@ -3,6 +3,8 @@
 
 An all-purpose Discord bot for my Discord server, but can be self-hosted and used on other Discord servers. The bot is written completely in Javascript and runs on Node.js. Other libraries are planned on being added in the future to facilitate in the addition of new features.
 
+You may download this and customize the source code for use on your guilds, but do keep in mind that this bot is heavily customized to work on my servers. If that bothers you, then you may want to look somewhere else for a more vanilla discord bot. If you are looking for a recommendation, I'd point you [here](https://github.com/Cog-Creators/Red-DiscordBot).
+
 ## Working Features
 - Gfycat searching
 - YouTube music playing
