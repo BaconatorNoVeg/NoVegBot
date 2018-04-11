@@ -11,8 +11,5 @@
     "audioVolume": 0.25
   },
   "server": {
-    "wordBlacklist": false,
-    "channelWhitelist": [],
-    "bannedWordsFile": ""
   }
 }

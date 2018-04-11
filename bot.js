@@ -6,7 +6,6 @@ const fs = require("fs");
 const getVidInfo = require("youtube-info");
 const Gfycat = require('gfycat-sdk');
 const options = require('./options.json');
-const baby = require("babyparse");
 const editJsonFile = require("edit-json-file");
 let optionsFile = editJsonFile(`${__dirname}/options.json`);
 var path = require('path');
@@ -20,7 +19,6 @@ var gfycat = new Gfycat({
 });
 var youTube = new YouTube();
 var blacklistEnabled = options.server.wordBlacklist;
-var wordBlacklist = (baby.parseFiles(options.server.bannedWordsFile)).data[0];
 var whitelist = options.server.channelWhitelist;
 var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
@@ -764,27 +762,6 @@ bot.on("messageCreate", (msg) => {
     // Delete messages containing commands
     if (msg.content.startsWith(options.core.prefix)) {
         bot.deleteMessage(msg.channel.id, msg.id);
-    }
-
-    // For server word blacklist
-    if (blacklistEnabled) {
-        for (var i = 0; i < whitelist.length; i++) {
-            var channelExists = false;
-            if (msg.channel.id == whitelist[i]) {
-                channelExists = true;
-                return;
-            }
-        }
-        if (!channelExists) {
-            for (var i = 0; i < wordBlacklist.length; i++) {
-                if (msg.content.toLowerCase().includes(wordBlacklist[i])) {
-                    bot.deleteMessage(msg.channel.id, msg.id);
-                    if (options.core.isDebug) {
-                        console.log(msg.author.username + " used a banned word in " + msg.channel.name + ".");
-                    }
-                }
-            }
-        }
     }
 
 });
