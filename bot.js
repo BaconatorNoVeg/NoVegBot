@@ -39,13 +39,14 @@ var defaultStatus = {
 // JSON of commands, obviously
 var commands = {
     "help": options.core.prefix + "help",
-    "play": options.core.prefix + "play",
+    "play": options.core.prefix + "play ",
     "loop": options.core.prefix + "loop",
     "stop": options.core.prefix + "stop",
     "skip": options.core.prefix + "skip",
     "ping": options.core.prefix + "ping",
     "pong": options.core.prefix + "pong",
-    "gif": options.core.prefix + "gif"
+    "playlist": options.core.prefix + "playlist ",
+    "gif": options.core.prefix + "gif "
 }
 
 // JSON of admin commands
@@ -163,8 +164,10 @@ var playSong = function (requested, name) {
             audioQueue.push(requested);
             respond(requested.channel, "**" + requested.requester.user.username + "** added `" + requested.song.title + "` to the queue.");
         } else {
-            if (options.core.isDebug) {console.log("Connection already exists.");}
-            
+            if (options.core.isDebug) {
+                console.log("Connection already exists.");
+            }
+
             const nowPlayingData = {
                 "embed": {
                     "title": requested.song.title,
@@ -201,9 +204,45 @@ var playSong = function (requested, name) {
     }
 }
 
+// Convert ISO Time
+function convert_time(duration) {
+    var a = duration.match(/\d+/g);
+
+    if (duration.indexOf('M') >= 0 && duration.indexOf('H') == -1 && duration.indexOf('S') == -1) {
+        a = [0, a[0], 0];
+    }
+
+    if (duration.indexOf('H') >= 0 && duration.indexOf('M') == -1) {
+        a = [a[0], 0, a[1]];
+    }
+    if (duration.indexOf('H') >= 0 && duration.indexOf('M') == -1 && duration.indexOf('S') == -1) {
+        a = [a[0], 0, 0];
+    }
+
+    duration = 0;
+
+    if (a.length == 3) {
+        duration = duration + parseInt(a[0]) * 3600;
+        duration = duration + parseInt(a[1]) * 60;
+        duration = duration + parseInt(a[2]);
+    }
+
+    if (a.length == 2) {
+        duration = duration + parseInt(a[0]) * 60;
+        duration = duration + parseInt(a[1]);
+    }
+
+    if (a.length == 1) {
+        duration = duration + parseInt(a[0]);
+    }
+    return duration
+}
+
 // Get song data
 function getSongData(keywrdUrl, isSearch, cb) {
-    if (options.core.isDebug){console.log("Gathering video data");}
+    if (options.core.isDebug) {
+        console.log("Gathering video data");
+    }
     if (isSearch) {
         youTube.search(keywrdUrl, 1, function (err, result) {
             if (err) {
@@ -213,8 +252,10 @@ function getSongData(keywrdUrl, isSearch, cb) {
                 console.log("Using first search result.");
                 var videoID = result.items[0].id.videoId;
                 songUrl = "https://www.youtube.com/watch?v=" + videoID;
-                getVidInfo(videoID).then(function (videoInfo) {
-                    var videoDurationConvert = timeConvert(videoInfo.duration);
+                youTube.getById(videoID, function (error, videoInfo) {
+                    var ISO2Seconds = convert_time(JSON.stringify(videoInfo.contentDetails.duration));
+                    console.log(ISO2Seconds);
+                    var videoDurationConvert = timeConvert(ISO2Seconds);
                     var videoDuration;
                     if (videoDurationConvert.hours == 0) {
                         if (videoDurationConvert.minutes < 10) {
@@ -259,8 +300,9 @@ function getSongData(keywrdUrl, isSearch, cb) {
         });
     } else {
         var videoID = keywrdUrl.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-        getVidInfo(videoID[1]).then(function (videoInfo) {
-            var videoDurationConvert = timeConvert(videoInfo.duration);
+        youTube.getById(videoID[1], function (error, result) {
+            var ISO2Seconds = convert_time(JSON.stringify(result.items[0].contentDetails.duration));
+            var videoDurationConvert = timeConvert(ISO2Seconds);
             var videoDuration;
             if (videoDurationConvert.hours == 0) {
                 if (videoDurationConvert.minutes < 10) {
@@ -292,14 +334,29 @@ function getSongData(keywrdUrl, isSearch, cb) {
                 }
             }
             var song = {
-                url: videoInfo.url,
+                url: keywrdUrl,
                 id: videoID[1],
-                title: videoInfo.title,
+                title: result.items[0].snippet.title,
                 duration: videoDuration,
-                uploader: videoInfo.owner,
-                thumbnail: videoInfo.thumbnailUrl
+                uploader: result.items[0].snippet.channelTitle,
+                thumbnail: result.items[0].snippet.thumbnails.standard.url
             }
             cb(song);
+        });
+    }
+}
+
+// Get videos in playlist
+function getPlaylistVideos(playlist, cb) {
+    var list = {
+        "playlist": []
+    }
+    for (obj in playlist.items) {
+        var url = "https://www.youtube.com/watch?v=" + playlist.items[obj].snippet.resourceId.videoId;
+        getSongData(url, false, function (song) {
+            var songDat = song;
+            list.playlist.push(songDat);
+            cb(list);
         });
     }
 }
@@ -338,76 +395,14 @@ bot.on("messageCreate", (msg) => {
         } else if (!msg.member.voiceState.channelID) {
             bot.createMessage(msg.channel.id, "You are not in a voice channel.");
             return;
-        } else if (msg.content.length <= commands.play.length + 1) {
+        } else if (msg.content.length <= commands.play.length) {
             respond(channelID, "```\nPlay a song.\n\n\t[p]play <YouTube Link>   | Plays a video from YouTube\n\t[p]play local            | Use as comment on an attached mp3 file\n\nThis command may only be run in #novegbot.```");
             return;
         } else if (!msg.content.includes("local")) {
-            var ytLink = msg.content.substring(commands.play.length + 1);
+            var ytLink = msg.content.substring(commands.play.length);
             var videoID = ytLink.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
             var songUrl = null;
             var requested = {};
-            /* if (videoID == null) {
-                console.log("Searching youtube.");
-                youTube.search(ytLink, 1, function (err, result) {
-                    if (err) {
-                        console.log("Error in search");
-                        console.log(error);
-                    } else {
-                        console.log("Using first search result.");
-                        videoID = result.items[0].id.videoId;
-                        songUrl = "https://www.youtube.com/watch?v=" + videoID;
-                        console.log(songUrl);
-                        requested = {
-                            url: songUrl,
-                            requester: author,
-                            channel: channelID
-                        }
-                        var voiceChannelID = msg.member.voiceState.channelID;
-                        if (conn != undefined) {
-                            if (conn.playing) {
-                                audioQueue.push(requested);
-                                console.log(audioQueue.length);
-                                var url = requested.url;
-                                getVidInfo(videoID).then(function (videoInfo) {
-                                    respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
-                                });
-                                console.log(ytLink + " added to queue.");
-                                console.log("Current audio queue: " + audioQueue);
-                            } else {
-                                downloadThenPlay(requested, voiceChannelID, msg.channel.guild.id, msg.author);
-                            }
-                        } else {
-                            downloadThenPlay(requested, voiceChannelID, msg.channel.guild.id, msg.author);
-                        }
-                    }
-                });
-            } else {
-                console.log("Video ID = ", videoID[1]);
-                songUrl = ytLink;
-                requested = {
-                    url: songUrl,
-                    requester: author,
-                    channel: channelID
-                }
-                var voiceChannelID = msg.member.voiceState.channelID;
-                if (conn != undefined) {
-                    if (conn.playing) {
-                        audioQueue.push(requested);
-                        console.log(audioQueue.length);
-                        var url = requested.url;
-                        getVidInfo(videoID[1]).then(function (videoInfo) {
-                            respond(channelID, "`" + author.username + "` added `" + videoInfo.title + "` to the queue.");
-                        });
-                        console.log(ytLink + " added to queue.");
-                        console.log("Current audio queue: " + audioQueue);
-                    } else {
-                        downloadThenPlay(requested, voiceChannelID, msg.channel.guild.id, msg.author);
-                    }
-                } else {
-                    console.log("Executing the downloadThenPlay function now!!!")
-                    downloadThenPlay(requested, voiceChannelID, msg.channel.guild.id, msg.author);
-                }
-            } */
             if (videoID == null) {
                 getSongData(ytLink, true, function (song) {
                     requested = {
@@ -466,6 +461,156 @@ bot.on("messageCreate", (msg) => {
             }
         }
 
+    }
+
+    // Playlist command
+    else if (msg.content.startsWith(commands.playlist)) {
+        var fs = require('fs');
+        var args = msg.content.substring(commands.playlist.length).split(" ");
+
+        // Create empty playlists
+        if (args[0] == "create") {
+            // Create playlists folder if it doesn't exist
+            if (!fs.existsSync("./audio/playlists")) {
+                fs.mkdirSync("./audio/playlists");
+            }
+            if (args.length == 2) {
+                // Give help
+            } else {
+                var playlistname = args[1];
+                var playlistfile = playlistname + ".txt";
+                fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
+                    if (err == null) {
+                        respond(channelID, "Error: A playlist already exists with the name `" + playlistname + "`");
+                    } else if (err.code == 'ENOENT') {
+                        fs.writeFile("./audio/playlists/" + playlistname + ".txt", "");
+                        respond(channelID, "Created empty playlist with the name `" + playlistname + "`");
+                    } else {
+                        console.error("Something stupid happened.");
+                    }
+                });
+            }
+        }
+
+        // Add videos to playlists
+        else if (args[0] == "add") {
+            // Create playlists folder if it doesn't exist
+            if (!fs.existsSync("./audio/playlists")) {
+                fs.mkdirSync("./audio/playlists");
+            }
+            if (args.length == 1) {
+                // Give help
+            } else {
+                var playlistname = args[1];
+                var videolink = args[2];
+                var songDat;
+                getSongData(videolink, false, function (song) {
+                    songDat = song;
+                    const embedData = {
+                        "embed": {
+                            "title": songDat.title,
+                            "url": songDat.url,
+                            "color": 12345678,
+                            "footer": {
+                                "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
+                                "text": "NoVegBot"
+                            },
+                            "thumbnail": {
+                                "url": songDat.thumbnail
+                            },
+                            "author": {
+                                "name": "Baconator_NoVeg added a video to the '" + playlistname + "' playlist.",
+                                "icon_url": msg.author.staticAvatarURL
+                            },
+                            "fields": [{
+                                    "name": "Uploader",
+                                    "value": songDat.uploader,
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Duration",
+                                    "value": songDat.duration,
+                                    "inline": true
+                                }
+                            ]
+                        }
+                    }
+                    var playlistfile = playlistname + ".json";
+                    fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
+                        if (err == null) {
+                            fs.readFile("./audio/playlists/" + playlistfile, 'utf8', function (err, data) {
+                                if (err) {
+                                    console.error(err);
+                                } else {
+                                    var obj = JSON.parse(data);
+                                    obj.playlist.push(songDat);
+                                    fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
+                                }
+                            });
+                            respond(channelID, embedData);
+                        } else if (err.code == 'ENOENT') {
+                            var obj = {
+                                "playlist": []
+                            }
+                            obj.playlist.push(songDat);
+                            fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
+                            respond(channelID, embedData);
+                        } else {
+                            console.error("Something stupid happened.");
+                        }
+                    });
+                });
+            }
+        }
+
+        // Import a playlist from YouTube
+        else if (args[0] == "import") {
+            var playlistUrl = args[1];
+            var playlistID = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/playlist\?list=|\/)([^\s&]+)/)[1];
+            var playlistName = args[2];
+            var playlistData;
+            youTube.getPlayListsItemsById(playlistID, 50, function (error, result) {
+                if (error) {
+                    console.error(error);
+                } else {
+                    playlistData = result;
+                    fs.stat("./audio/playlists/" + playlistName + ".json", function (err, stat) {
+                        if (err == null) {
+                            respond(channelID, "Playlist already exists! Please choose a different name for the playlist you are importing.");
+                        } else if (err.code == 'ENOENT') {
+                            getPlaylistVideos(playlistData, function (list) {
+                                var playlistfile = playlistName + ".json";
+                                fs.writeFile("./audio/playlists/" + playlistName + ".json", JSON.stringify(list, null, " "), 'utf8');
+                                //respond(channelID, "YouTube playlist successfully imported.");
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Play a playlist in order of added videos
+        else if (args[0] == "play") {
+            var playlist = args[1];
+            fs.readFile("./audio/playlists/" + playlist + ".json", 'utf8', function (err, data) {
+                if (err) {
+                    console.error(err);
+                    respond(channelID, "An error has occurred. That playlist may not exist. See the log for more info.");
+                } else {
+                    var playlistToQueue = JSON.parse(data);
+                    for (obj in playlistToQueue.playlist) {
+                        var requested = {
+                            song: playlistToQueue.playlist[obj],
+                            requester: msg.member,
+                            channel: channelID
+                        }
+                        console.log(JSON.stringify(requested, null, " "));
+                        audioQueue.push(requested);
+                    }
+                    downloadToPlay(audioQueue.shift());
+                }
+            });
+        }
     }
 
     // Loop Command
