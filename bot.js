@@ -87,7 +87,7 @@ var downloadToPlay = function (requested) {
                 respond(requested.channel, "I'm downloading the video, please don't send me anymore commands until I add it to the queue. :)");
                 ytdl.exec(url, ['-q', '-x', '--audio-format', 'mp3', '-o', './audio/cache/%(id)s.%(ext)s'], {}, function exec(err, output) {
                     if (err) {
-                        console.err(err);
+                        console.error(err);
                     }
                     playSong(requested, audioFile);
                 });
@@ -250,96 +250,104 @@ function getSongData(keywrdUrl, isSearch, cb) {
                 console.log("Using first search result.");
                 var videoID = result.items[0].id.videoId;
                 songUrl = "https://www.youtube.com/watch?v=" + videoID;
-                youTube.getById(videoID, function (error, videoInfo) {
-                    var ISO2Seconds = convert_time(JSON.stringify(videoInfo.contentDetails.duration));
-                    console.log(ISO2Seconds);
-                    var videoDurationConvert = timeConvert(ISO2Seconds);
-                    var videoDuration;
-                    if (videoDurationConvert.hours == 0) {
-                        if (videoDurationConvert.minutes < 10) {
-                            if (videoDurationConvert.seconds < 10) {
-                                videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                youTube.getById(videoID, function (error, result) {
+                    if (!error) {
+                        var ISO2Seconds = convert_time(JSON.stringify(result.items[0].contentDetails.duration));
+                        var videoDurationConvert = timeConvert(ISO2Seconds);
+                        var videoDuration;
+                        if (videoDurationConvert.hours == 0) {
+                            if (videoDurationConvert.minutes < 10) {
+                                if (videoDurationConvert.seconds < 10) {
+                                    videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                } else {
+                                    videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                }
                             } else {
-                                videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                if (videoDurationConvert.seconds < 10) {
+                                    videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                } else {
+                                    videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                }
                             }
                         } else {
-                            if (videoDurationConvert.seconds < 10) {
-                                videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                            if (videoDurationConvert.minutes < 10) {
+                                if (videoDurationConvert.seconds < 10) {
+                                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                } else {
+                                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                }
                             } else {
-                                videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                if (videoDurationConvert.seconds < 10) {
+                                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                } else {
+                                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                }
                             }
                         }
+                        var song = {
+                            url: songUrl,
+                            id: videoID,
+                            title: result.items[0].snippet.title,
+                            duration: videoDuration,
+                            uploader: result.items[0].snippet.channelTitle,
+                            thumbnail: result.items[0].snippet.thumbnails.standard.url
+                        }
+                        cb(song);
                     } else {
-                        if (videoDurationConvert.minutes < 10) {
-                            if (videoDurationConvert.seconds < 10) {
-                                videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                            } else {
-                                videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                            }
-                        } else {
-                            if (videoDurationConvert.seconds < 10) {
-                                videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                            } else {
-                                videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                            }
-                        }
+                        console.error(error);
                     }
-                    var song = {
-                        url: videoInfo.url,
-                        id: videoID,
-                        title: videoInfo.title,
-                        duration: videoDuration,
-                        uploader: videoInfo.owner,
-                        thumbnail: videoInfo.thumbnailUrl
-                    }
-                    cb(song);
+
                 });
             }
         });
     } else {
         var videoID = keywrdUrl.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
         youTube.getById(videoID[1], function (error, result) {
-            var ISO2Seconds = convert_time(JSON.stringify(result.items[0].contentDetails.duration));
-            var videoDurationConvert = timeConvert(ISO2Seconds);
-            var videoDuration;
-            if (videoDurationConvert.hours == 0) {
-                if (videoDurationConvert.minutes < 10) {
-                    if (videoDurationConvert.seconds < 10) {
-                        videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                    } else {
-                        videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                    }
-                } else {
-                    if (videoDurationConvert.seconds < 10) {
-                        videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                    } else {
-                        videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                    }
-                }
+            if (error) {
+                console.error(error);
             } else {
-                if (videoDurationConvert.minutes < 10) {
-                    if (videoDurationConvert.seconds < 10) {
-                        videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                var ISO2Seconds = convert_time(JSON.stringify(result.items[0].contentDetails.duration));
+                var videoDurationConvert = timeConvert(ISO2Seconds);
+                var videoDuration;
+                if (videoDurationConvert.hours == 0) {
+                    if (videoDurationConvert.minutes < 10) {
+                        if (videoDurationConvert.seconds < 10) {
+                            videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                        } else {
+                            videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        }
                     } else {
-                        videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        if (videoDurationConvert.seconds < 10) {
+                            videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                        } else {
+                            videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        }
                     }
                 } else {
-                    if (videoDurationConvert.seconds < 10) {
-                        videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                    if (videoDurationConvert.minutes < 10) {
+                        if (videoDurationConvert.seconds < 10) {
+                            videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                        } else {
+                            videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        }
                     } else {
-                        videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        if (videoDurationConvert.seconds < 10) {
+                            videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                        } else {
+                            videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                        }
                     }
                 }
+                var song = {
+                    url: keywrdUrl,
+                    id: videoID[1],
+                    title: result.items[0].snippet.title,
+                    duration: videoDuration,
+                    uploader: result.items[0].snippet.channelTitle,
+                    thumbnail: result.items[0].snippet.thumbnails.standard.url
+                }
+                cb(song);
             }
-            var song = {
-                url: keywrdUrl,
-                id: videoID[1],
-                title: result.items[0].snippet.title,
-                duration: videoDuration,
-                uploader: result.items[0].snippet.channelTitle,
-                thumbnail: result.items[0].snippet.thumbnails.standard.url
-            }
-            cb(song);
         });
     }
 }
@@ -350,12 +358,37 @@ function getPlaylistVideos(playlist, cb) {
         "playlist": []
     }
     for (obj in playlist.items) {
-        var url = "https://www.youtube.com/watch?v=" + playlist.items[obj].snippet.resourceId.videoId;
-        getSongData(url, false, function (song) {
-            var songDat = song;
-            list.playlist.push(songDat);
-            cb(list);
+        var i = 1;
+
+        function getListVidInfo(vidObj, cb) {
+            var url = "https://www.youtube.com/watch?v=" + vidObj.snippet.resourceId.videoId;
+            var listPos = vidObj.snippet.position;
+            cb(url, listPos);
+        }
+
+        getListVidInfo(playlist.items[obj], function (url, listPos) {
+            getSongData(url, false, function (song) {
+                var listObj = {
+                    "songDat": song,
+                    "pos": listPos
+                }
+                list.playlist.push(listObj);
+                if (i == playlist.items.length) {
+                    var sortpasses = 1;
+                    list.playlist.sort(function (a, b) {
+                        if(options.core.isDebug){
+                        console.log("List sort pass " + sortpasses);
+                        }
+                        sortpasses++;
+                        return parseFloat(a.pos) - parseFloat(b.pos);
+                    });
+                    cb(list);
+                }
+                i++;
+            });
         });
+
+
     }
 }
 
@@ -570,6 +603,7 @@ bot.on("messageCreate", (msg) => {
             youTube.getPlayListsItemsById(playlistID, 50, function (error, result) {
                 if (error) {
                     console.error(error);
+                    respond(channelID, "An error has occurred. Make sure the playlist is either public or unlisted and not private. See console for more details.");
                 } else {
                     playlistData = result;
                     fs.stat("./audio/playlists/" + playlistName + ".json", function (err, stat) {
@@ -579,7 +613,7 @@ bot.on("messageCreate", (msg) => {
                             getPlaylistVideos(playlistData, function (list) {
                                 var playlistfile = playlistName + ".json";
                                 fs.writeFile("./audio/playlists/" + playlistName + ".json", JSON.stringify(list, null, " "), 'utf8');
-                                //respond(channelID, "YouTube playlist successfully imported.");
+                                respond(channelID, "YouTube playlist successfully imported.");
                             });
                         }
                     });
@@ -598,11 +632,10 @@ bot.on("messageCreate", (msg) => {
                     var playlistToQueue = JSON.parse(data);
                     for (obj in playlistToQueue.playlist) {
                         var requested = {
-                            song: playlistToQueue.playlist[obj],
+                            song: playlistToQueue.playlist[obj].songDat,
                             requester: msg.member,
                             channel: channelID
                         }
-                        console.log(JSON.stringify(requested, null, " "));
                         audioQueue.push(requested);
                     }
                     downloadToPlay(audioQueue.shift());
