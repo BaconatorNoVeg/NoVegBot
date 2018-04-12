@@ -43,7 +43,7 @@ var commands = {
     "skip": options.core.prefix + "skip",
     "ping": options.core.prefix + "ping",
     "pong": options.core.prefix + "pong",
-    "playlist": options.core.prefix + "playlist ",
+    "playlist": options.core.prefix + "playlist",
     "gif": options.core.prefix + "gif "
 }
 
@@ -92,7 +92,7 @@ var downloadToPlay = function (requested) {
                     playSong(requested, audioFile);
                 });
             } else {
-                console.err("Something stupid happened. I don't know what, tho.");
+                console.error("Something stupid happened. I don't know what, tho.");
             }
         });
     }
@@ -244,8 +244,8 @@ function getSongData(keywrdUrl, isSearch, cb) {
     if (isSearch) {
         youTube.search(keywrdUrl, 1, function (err, result) {
             if (err) {
-                console.err("Error in search");
-                console.err(error);
+                console.error("Error in search");
+                console.error(error);
             } else {
                 console.log("Using first search result.");
                 var videoID = result.items[0].id.videoId;
@@ -376,8 +376,8 @@ function getPlaylistVideos(playlist, cb) {
                 if (i == playlist.items.length) {
                     var sortpasses = 1;
                     list.playlist.sort(function (a, b) {
-                        if(options.core.isDebug){
-                        console.log("List sort pass " + sortpasses);
+                        if (options.core.isDebug) {
+                            console.log("List sort pass " + sortpasses);
                         }
                         sortpasses++;
                         return parseFloat(a.pos) - parseFloat(b.pos);
@@ -497,7 +497,10 @@ bot.on("messageCreate", (msg) => {
     // Playlist command
     else if (msg.content.startsWith(commands.playlist)) {
         var fs = require('fs');
-        var args = msg.content.substring(commands.playlist.length).split(" ");
+        if (msg.content.length <= commands.playlist.length) {
+            respond(channelID, "```Playlist usage:\n\n/playlist create	| Creates an empty playlist\n/playlist add	    | Adds a song to an existing playlist\n/playlist import	| Imports a playlist from YouTube```");
+        }
+        var args = msg.content.substring(commands.playlist.length + 1).split(" ");
 
         // Create empty playlists
         if (args[0] == "create") {
@@ -505,16 +508,19 @@ bot.on("messageCreate", (msg) => {
             if (!fs.existsSync("./audio/playlists")) {
                 fs.mkdirSync("./audio/playlists");
             }
-            if (args.length == 2) {
-                // Give help
+            if (args.length == 1) {
+                respond(channelID, "```Create an empty playlist:\n\n/playlist create <playlist name>\n```");
             } else {
                 var playlistname = args[1];
-                var playlistfile = playlistname + ".txt";
+                var playlistfile = playlistname + ".json";
                 fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
                     if (err == null) {
                         respond(channelID, "Error: A playlist already exists with the name `" + playlistname + "`");
                     } else if (err.code == 'ENOENT') {
-                        fs.writeFile("./audio/playlists/" + playlistname + ".txt", "");
+                        var emptyList = {
+                            "playlist": []
+                        }
+                        fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(emptyList, null, " "));
                         respond(channelID, "Created empty playlist with the name `" + playlistname + "`");
                     } else {
                         console.error("Something stupid happened.");
@@ -530,95 +536,109 @@ bot.on("messageCreate", (msg) => {
                 fs.mkdirSync("./audio/playlists");
             }
             if (args.length == 1) {
-                // Give help
+                respond(channelID, "```Add a video to a new playlist, or an already existing one:\n\n/playlist add <playlist name> <video link>```");
             } else {
                 var playlistname = args[1];
                 var videolink = args[2];
-                var songDat;
-                getSongData(videolink, false, function (song) {
-                    songDat = song;
-                    const embedData = {
-                        "embed": {
-                            "title": songDat.title,
-                            "url": songDat.url,
-                            "color": 12345678,
-                            "footer": {
-                                "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
-                                "text": "NoVegBot"
-                            },
-                            "thumbnail": {
-                                "url": songDat.thumbnail
-                            },
-                            "author": {
-                                "name": "Baconator_NoVeg added a video to the '" + playlistname + "' playlist.",
-                                "icon_url": msg.author.staticAvatarURL
-                            },
-                            "fields": [{
-                                    "name": "Uploader",
-                                    "value": songDat.uploader,
-                                    "inline": true
-                                },
-                                {
-                                    "name": "Duration",
-                                    "value": songDat.duration,
-                                    "inline": true
+                try {
+                    var linkCheck = videolink.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)[1];
+                } catch (error) {
+                    if (error) {
+                        respond(channelID, "The YouTube link you entered is not valid, or you didn't even enter a link.");
+                    } else {
+                        var songDat;
+                        getSongData(videolink, false, function (song) {
+                            songDat = song;
+                            const embedData = {
+                                "embed": {
+                                    "title": songDat.title,
+                                    "url": songDat.url,
+                                    "color": 12345678,
+                                    "footer": {
+                                        "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
+                                        "text": "NoVegBot"
+                                    },
+                                    "thumbnail": {
+                                        "url": songDat.thumbnail
+                                    },
+                                    "author": {
+                                        "name": "Baconator_NoVeg added a video to the '" + playlistname + "' playlist.",
+                                        "icon_url": msg.author.staticAvatarURL
+                                    },
+                                    "fields": [{
+                                            "name": "Uploader",
+                                            "value": songDat.uploader,
+                                            "inline": true
+                                        },
+                                        {
+                                            "name": "Duration",
+                                            "value": songDat.duration,
+                                            "inline": true
+                                        }
+                                    ]
                                 }
-                            ]
-                        }
-                    }
-                    var playlistfile = playlistname + ".json";
-                    fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
-                        if (err == null) {
-                            fs.readFile("./audio/playlists/" + playlistfile, 'utf8', function (err, data) {
-                                if (err) {
-                                    console.error(err);
-                                } else {
-                                    var obj = JSON.parse(data);
+                            }
+                            var playlistfile = playlistname + ".json";
+                            fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
+                                if (err == null) {
+                                    fs.readFile("./audio/playlists/" + playlistfile, 'utf8', function (err, data) {
+                                        if (err) {
+                                            console.error(err);
+                                        } else {
+                                            var obj = JSON.parse(data);
+                                            obj.playlist.push(songDat);
+                                            fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
+                                        }
+                                    });
+                                    respond(channelID, embedData);
+                                } else if (err.code == 'ENOENT') {
+                                    var obj = {
+                                        "playlist": []
+                                    }
                                     obj.playlist.push(songDat);
                                     fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
+                                    respond(channelID, embedData);
+                                } else {
+                                    console.error("Something stupid happened.");
                                 }
                             });
-                            respond(channelID, embedData);
-                        } else if (err.code == 'ENOENT') {
-                            var obj = {
-                                "playlist": []
-                            }
-                            obj.playlist.push(songDat);
-                            fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
-                            respond(channelID, embedData);
-                        } else {
-                            console.error("Something stupid happened.");
-                        }
-                    });
-                });
+                        });
+                    }
+                }
             }
         }
 
         // Import a playlist from YouTube
         else if (args[0] == "import") {
-            var playlistUrl = args[1];
-            var playlistID = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/playlist\?list=|\/)([^\s&]+)/)[1];
-            var playlistName = args[2];
-            var playlistData;
-            youTube.getPlayListsItemsById(playlistID, 50, function (error, result) {
-                if (error) {
-                    console.error(error);
-                    respond(channelID, "An error has occurred. Make sure the playlist is either public or unlisted and not private. See console for more details.");
-                } else {
-                    playlistData = result;
-                    fs.stat("./audio/playlists/" + playlistName + ".json", function (err, stat) {
-                        if (err == null) {
-                            respond(channelID, "Playlist already exists! Please choose a different name for the playlist you are importing.");
-                        } else if (err.code == 'ENOENT') {
-                            getPlaylistVideos(playlistData, function (list) {
-                                var playlistfile = playlistName + ".json";
-                                fs.writeFile("./audio/playlists/" + playlistName + ".json", JSON.stringify(list, null, " "), 'utf8');
-                                respond(channelID, "YouTube playlist successfully imported.");
-                            });
-                        }
-                    });
-                }
-            });
+            if (args.length == 1) {
+                respond(channelID, "```Import a playlist from YouTube (playlist must be public or unlisted):\n\n/playlist import <playlist link> <name for imported playlist>```");
+            } else {
+                var playlistUrl = args[1];
+                try {
+                    var playlistID = args[1].match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/playlist\?list=|\/)([^\s&]+)/)[1];
+                } catch (error) {}
+                var playlistName = args[2];
+                var playlistData;
+                youTube.getPlayListsItemsById(playlistID, 50, function (error, result) {
+                    if (error) {
+                        console.error(error);
+                        respond(channelID, "An error has occurred. Make sure the playlist is either public or unlisted and not private. See console for more details.");
+                    } else {
+                        playlistData = result;
+                        fs.stat("./audio/playlists/" + playlistName + ".json", function (err, stat) {
+                            if (err == null) {
+                                respond(channelID, "Playlist already exists! Please choose a different name for the playlist you are importing.");
+                            } else if (err.code == 'ENOENT') {
+                                getPlaylistVideos(playlistData, function (list) {
+                                    var playlistfile = playlistName + ".json";
+                                    fs.writeFile("./audio/playlists/" + playlistName + ".json", JSON.stringify(list, null, " "), 'utf8');
+                                    respond(channelID, "YouTube playlist successfully imported.");
+                                });
+                            }
+                        });
+                    }
+                });
+            }
         }
 
         // Play a playlist in order of added videos
