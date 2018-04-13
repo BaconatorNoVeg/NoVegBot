@@ -540,71 +540,63 @@ bot.on("messageCreate", (msg) => {
             } else {
                 var playlistname = args[1];
                 var videolink = args[2];
-                try {
-                    var linkCheck = videolink.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/)[1];
-                } catch (error) {
-                    if (error) {
-                        respond(channelID, "The YouTube link you entered is not valid, or you didn't even enter a link.");
-                    } else {
-                        var songDat;
-                        getSongData(videolink, false, function (song) {
-                            songDat = song;
-                            const embedData = {
-                                "embed": {
-                                    "title": songDat.title,
-                                    "url": songDat.url,
-                                    "color": 12345678,
-                                    "footer": {
-                                        "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
-                                        "text": "NoVegBot"
-                                    },
-                                    "thumbnail": {
-                                        "url": songDat.thumbnail
-                                    },
-                                    "author": {
-                                        "name": "Baconator_NoVeg added a video to the '" + playlistname + "' playlist.",
-                                        "icon_url": msg.author.staticAvatarURL
-                                    },
-                                    "fields": [{
-                                            "name": "Uploader",
-                                            "value": songDat.uploader,
-                                            "inline": true
-                                        },
-                                        {
-                                            "name": "Duration",
-                                            "value": songDat.duration,
-                                            "inline": true
-                                        }
-                                    ]
+                var songDat;
+                getSongData(videolink, false, function (song) {
+                    songDat = song;
+                    const embedData = {
+                        "embed": {
+                            "title": songDat.title,
+                            "url": songDat.url,
+                            "color": 12345678,
+                            "footer": {
+                                "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
+                                "text": "NoVegBot"
+                            },
+                            "thumbnail": {
+                                "url": songDat.thumbnail
+                            },
+                            "author": {
+                                "name": "Baconator_NoVeg added a video to the '" + playlistname + "' playlist.",
+                                "icon_url": msg.author.staticAvatarURL
+                            },
+                            "fields": [{
+                                    "name": "Uploader",
+                                    "value": songDat.uploader,
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Duration",
+                                    "value": songDat.duration,
+                                    "inline": true
                                 }
-                            }
-                            var playlistfile = playlistname + ".json";
-                            fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
-                                if (err == null) {
-                                    fs.readFile("./audio/playlists/" + playlistfile, 'utf8', function (err, data) {
-                                        if (err) {
-                                            console.error(err);
-                                        } else {
-                                            var obj = JSON.parse(data);
-                                            obj.playlist.push(songDat);
-                                            fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
-                                        }
-                                    });
-                                    respond(channelID, embedData);
-                                } else if (err.code == 'ENOENT') {
-                                    var obj = {
-                                        "playlist": []
-                                    }
+                            ]
+                        }
+                    }
+                    var playlistfile = playlistname + ".json";
+                    fs.stat("./audio/playlists/" + playlistfile, function (err, stat) {
+                        if (err == null) {
+                            fs.readFile("./audio/playlists/" + playlistfile, 'utf8', function (err, data) {
+                                if (err) {
+                                    console.error(err);
+                                } else {
+                                    var obj = JSON.parse(data);
                                     obj.playlist.push(songDat);
                                     fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
-                                    respond(channelID, embedData);
-                                } else {
-                                    console.error("Something stupid happened.");
                                 }
                             });
-                        });
-                    }
-                }
+                            respond(channelID, embedData);
+                        } else if (err.code == 'ENOENT') {
+                            var obj = {
+                                "playlist": []
+                            }
+                            obj.playlist.push(songDat);
+                            fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
+                            respond(channelID, embedData);
+                        } else {
+                            console.error("Something stupid happened.");
+                        }
+                    });
+                });
             }
         }
 
