@@ -6,6 +6,7 @@ const fs = require("fs");
 const getVidInfo = require("youtube-info");
 const Gfycat = require('gfycat-sdk');
 const options = require('./options.json');
+const shuffle = require('shuffle-array');
 const editJsonFile = require("edit-json-file");
 let optionsFile = editJsonFile(`${__dirname}/options.json`);
 var path = require('path');
@@ -650,6 +651,30 @@ bot.on("messageCreate", (msg) => {
                     respond(channelID, "An error has occurred. That playlist may not exist. See the log for more info.");
                 } else {
                     var playlistToQueue = JSON.parse(data);
+                    for (obj in playlistToQueue.playlist) {
+                        var requested = {
+                            song: playlistToQueue.playlist[obj].songDat,
+                            requester: msg.member,
+                            channel: channelID
+                        }
+                        audioQueue.push(requested);
+                    }
+                    downloadToPlay(audioQueue.shift());
+                }
+            });
+        }
+
+        // Play a playlist in a random order
+        else if (args[0] == "mix") {
+            var playlist = args[1];
+            fs.readFile("./audio/playlists/" + playlist + ".json", 'utf8', function (err, data) {
+                if (err) {
+                    console.error(err);
+                    respond(channelID, "An error has occurred. That playlist may not exist. See the log for more info.");
+                } else {
+                    var shuffling = JSON.parse(data);
+                    shuffle(shuffling.playlist)
+                    var playlistToQueue = shuffling;
                     for (obj in playlistToQueue.playlist) {
                         var requested = {
                             song: playlistToQueue.playlist[obj].songDat,
