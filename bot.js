@@ -580,7 +580,11 @@ bot.on("messageCreate", (msg) => {
                                     console.error(err);
                                 } else {
                                     var obj = JSON.parse(data);
-                                    obj.playlist.push(songDat);
+                                    var thingToPush = {
+                                        "songDat": songDat,
+                                        "pos": obj.playlist.length
+                                    }
+                                    obj.playlist.push(thingToPush);
                                     fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
                                 }
                             });
@@ -589,7 +593,11 @@ bot.on("messageCreate", (msg) => {
                             var obj = {
                                 "playlist": []
                             }
-                            obj.playlist.push(songDat);
+                            var thingToPush = {
+                                "songDat": songDat,
+                                "pos": obj.playlist.length
+                            }
+                            obj.playlist.push(thingToPush);
                             fs.writeFile("./audio/playlists/" + playlistname + ".json", JSON.stringify(obj, null, " "), 'utf8');
                             respond(channelID, embedData);
                         } else {
