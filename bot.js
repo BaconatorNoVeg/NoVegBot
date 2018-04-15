@@ -246,7 +246,7 @@ function getSongData(keywrdUrl, isSearch, cb) {
         youTube.search(keywrdUrl, 1, function (err, result) {
             if (err) {
                 console.error("Error in search");
-                console.error(error);
+                console.error(err);
             } else {
                 console.log("Using first search result.");
                 var videoID = result.items[0].id.videoId;
