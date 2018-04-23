@@ -2,3 +2,4 @@ node_modules/*
 options.json
 audio/*
 testing.js
+server/
