@@ -291,7 +291,7 @@ function getSongData(keywrdUrl, isSearch, cb) {
                             title: result.items[0].snippet.title,
                             duration: videoDuration,
                             uploader: result.items[0].snippet.channelTitle,
-                            thumbnail: result.items[0].snippet.thumbnails.standard.url
+                            thumbnail: result.items[0].snippet.thumbnails.high.url
                         }
                         cb(song);
                     } else {
@@ -345,7 +345,7 @@ function getSongData(keywrdUrl, isSearch, cb) {
                     title: result.items[0].snippet.title,
                     duration: videoDuration,
                     uploader: result.items[0].snippet.channelTitle,
-                    thumbnail: result.items[0].snippet.thumbnails.standard.url
+                    thumbnail: result.items[0].snippet.thumbnails.high.url
                 }
                 cb(song);
             }
