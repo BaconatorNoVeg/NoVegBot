@@ -243,62 +243,70 @@ function getSongData(keywrdUrl, isSearch, cb) {
         console.log("Gathering video data");
     }
     if (isSearch) {
-        youTube.search(keywrdUrl, 1, function (err, result) {
+        youTube.search(keywrdUrl, 5, function (err, result) {
             if (err) {
                 console.error("Error in search");
                 console.error(err);
             } else {
-                console.log("Using first search result.");
-                var videoID = result.items[0].id.videoId;
-                songUrl = "https://www.youtube.com/watch?v=" + videoID;
-                youTube.getById(videoID, function (error, result) {
-                    if (!error) {
-                        var ISO2Seconds = convert_time(JSON.stringify(result.items[0].contentDetails.duration));
-                        var videoDurationConvert = timeConvert(ISO2Seconds);
-                        var videoDuration;
-                        if (videoDurationConvert.hours == 0) {
-                            if (videoDurationConvert.minutes < 10) {
-                                if (videoDurationConvert.seconds < 10) {
-                                    videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                var index = 0;
+                while (!(result.items[index].id.kind === ("youtube#video"))) {
+                    index++;
+                }
+                if (result.items[index].id.kind === ("youtube#video")) {
+                    console.log("Using search result #" + (index + 1));
+                    var videoID = result.items[index].id.videoId;
+                    songUrl = "https://www.youtube.com/watch?v=" + videoID;
+                    youTube.getById(videoID, function (error, result) {
+                        if (!error) {
+                            var ISO2Seconds = convert_time(JSON.stringify(result.items[index].contentDetails.duration));
+                            var videoDurationConvert = timeConvert(ISO2Seconds);
+                            var videoDuration;
+                            if (videoDurationConvert.hours == 0) {
+                                if (videoDurationConvert.minutes < 10) {
+                                    if (videoDurationConvert.seconds < 10) {
+                                        videoDuration = "0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                    } else {
+                                        videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    }
                                 } else {
-                                    videoDuration = "0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    if (videoDurationConvert.seconds < 10) {
+                                        videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                    } else {
+                                        videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    }
                                 }
                             } else {
-                                if (videoDurationConvert.seconds < 10) {
-                                    videoDuration = videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                if (videoDurationConvert.minutes < 10) {
+                                    if (videoDurationConvert.seconds < 10) {
+                                        videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                    } else {
+                                        videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    }
                                 } else {
-                                    videoDuration = videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    if (videoDurationConvert.seconds < 10) {
+                                        videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
+                                    } else {
+                                        videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
+                                    }
                                 }
                             }
+                            var song = {
+                                url: songUrl,
+                                id: videoID,
+                                title: result.items[index].snippet.title,
+                                duration: videoDuration,
+                                uploader: result.items[index].snippet.channelTitle,
+                                thumbnail: result.items[index].snippet.thumbnails.high.url
+                            }
+                            cb(song);
                         } else {
-                            if (videoDurationConvert.minutes < 10) {
-                                if (videoDurationConvert.seconds < 10) {
-                                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                                } else {
-                                    videoDuration = videoDurationConvert.hours + ":0" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                                }
-                            } else {
-                                if (videoDurationConvert.seconds < 10) {
-                                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":0" + videoDurationConvert.seconds;
-                                } else {
-                                    videoDuration = videoDurationConvert.hours + ":" + videoDurationConvert.minutes + ":" + videoDurationConvert.seconds;
-                                }
-                            }
+                            console.error(error);
                         }
-                        var song = {
-                            url: songUrl,
-                            id: videoID,
-                            title: result.items[0].snippet.title,
-                            duration: videoDuration,
-                            uploader: result.items[0].snippet.channelTitle,
-                            thumbnail: result.items[0].snippet.thumbnails.high.url
-                        }
-                        cb(song);
-                    } else {
-                        console.error(error);
-                    }
 
-                });
+                    });
+                } else if (index > 5) {
+                    console.log("No suitable video found to play.");
+                }
             }
         });
     } else {
