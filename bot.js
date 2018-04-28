@@ -256,9 +256,9 @@ function getSongData(keywrdUrl, isSearch, cb) {
                     console.log("Using search result #" + (index + 1));
                     var videoID = result.items[index].id.videoId;
                     songUrl = "https://www.youtube.com/watch?v=" + videoID;
-                    youTube.getById(videoID, function (error, result) {
+                    youTube.getById(videoID, function (error, res) {
                         if (!error) {
-                            var ISO2Seconds = convert_time(JSON.stringify(result.items[index].contentDetails.duration));
+                            var ISO2Seconds = convert_time(JSON.stringify(res.items[0].contentDetails.duration));
                             var videoDurationConvert = timeConvert(ISO2Seconds);
                             var videoDuration;
                             if (videoDurationConvert.hours == 0) {
@@ -293,10 +293,10 @@ function getSongData(keywrdUrl, isSearch, cb) {
                             var song = {
                                 url: songUrl,
                                 id: videoID,
-                                title: result.items[index].snippet.title,
+                                title: res.items[0].snippet.title,
                                 duration: videoDuration,
-                                uploader: result.items[index].snippet.channelTitle,
-                                thumbnail: result.items[index].snippet.thumbnails.high.url
+                                uploader: res.items[0].snippet.channelTitle,
+                                thumbnail: res.items[0].snippet.thumbnails.high.url
                             }
                             cb(song);
                         } else {
