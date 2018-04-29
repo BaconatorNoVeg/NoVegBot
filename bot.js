@@ -24,6 +24,7 @@ var whitelist = options.server.channelWhitelist;
 var isDebug = options.core.isDebug; // Debug flag for possible debug functions
 var conn = undefined;
 var loop = false;
+var lastBotMessage;
 // Create message function because I'm lazy
 var respond = function (id, message) {
     bot.createMessage(id, message);
@@ -90,6 +91,7 @@ var downloadToPlay = function (requested) {
                     if (err) {
                         console.error(err);
                     }
+                    bot.deleteMessage(lastBotMessage.channel.id, lastBotMessage.id);
                     playSong(requested, audioFile);
                 });
             } else {
@@ -161,7 +163,41 @@ var playSong = function (requested, name) {
     } else if (conn != undefined) {
         if (conn.playing) {
             audioQueue.push(requested);
-            respond(requested.channel, "**" + requested.requester.user.username + "** added `" + requested.song.title + "` to the queue.");
+            const embedData = {
+                "embed": {
+                    "title": requested.song.title,
+                    "url": requested.song.url,
+                    "color": 16711680,
+                    "footer": {
+                        "icon_url": "https://cdn.discordapp.com/avatars/433098342285836318/329b1b9c180152bdf8d2cf21c24ec4af.png",
+                        "text": "NoVegBot"
+                    },
+                    "thumbnail": {
+                        "url": requested.song.thumbnail
+                    },
+                    "author": {
+                        "name": requested.requester.user.username + " added a video to the queue.",
+                        "icon_url": requested.requester.staticAvatarURL
+                    },
+                    "fields": [{
+                            "name": "Uploader",
+                            "value": requested.song.uploader,
+                            "inline": true
+                        },
+                        {
+                            "name": "Duration",
+                            "value": requested.song.duration,
+                            "inline": true
+                        },
+                        {
+                            "name": "Queue position",
+                            "value": audioQueue.length
+                        }
+                    ]
+                }
+            }
+            //respond(requested.channel, "**" + requested.requester.user.username + "** added `" + requested.song.title + "` to the queue. Position in queue: " + audioQueue.length);
+            respond(requested.channel, embedData);
         } else {
             if (options.core.isDebug) {
                 console.log("Connection already exists.");
@@ -850,6 +886,10 @@ bot.on("messageCreate", (msg) => {
         bot.deleteMessage(msg.channel.id, msg.id);
     }
 
+    // Set the last bot message
+    if (msg.author.id === bot.user.id) {
+        lastBotMessage = msg;
+    }
 });
 
 // Let there be life!
