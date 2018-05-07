@@ -12,12 +12,10 @@ You may download this and customize the source code for use on your guilds, but 
 
 ## Features in Progress
 - Upload and play mp3 files
-- Server moderation
 
 ## Upcoming Features
-- Imgur searching
-- Discord server text games
-- Discord server point system
+- Fun
+- Karma
 
 ## Building Prerequisites
 Make sure you have Node.js installed. The bot runs on it.
